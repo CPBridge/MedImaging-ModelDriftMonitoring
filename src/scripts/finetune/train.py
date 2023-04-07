@@ -20,7 +20,8 @@ if library_path not in PYPATH:
 from model_drift.callbacks import IOMonitor
 from model_drift.models.finetune import CheXFinetune
 from model_drift.azure_utils import download_model_azure, get_azure_logger
-from model_drift.data.datamodules import PadChestDataModule
+# from model_drift.data.datamodules import PadChestDataModule
+from model_drift.data.datamodules import MGBCXRDataModule
 from model_drift.data.transform import VisionTransformer
 
 num_gpus = torch.cuda.device_count()
@@ -52,8 +53,8 @@ parser.add_argument("--output_dir", type=str, dest="output_dir", help="output di
 parser = VisionTransformer.add_argparse_args(parser)
 parser = CheXFinetune.add_model_args(parser)
 parser = pl.Trainer.add_argparse_args(parser)
-parser = PadChestDataModule.add_argparse_args(parser)
-
+# parser = PadChestDataModule.add_argparse_args(parser)
+parser = MGBCXRDataModule.add_argparse_args(parser)
 args = parser.parse_args()
 
 if args.num_workers < 0:
@@ -101,7 +102,8 @@ if args.run_azure:
     trainer.logger = get_azure_logger()
 
 transformer = VisionTransformer.from_argparse_args(args)
-dm = PadChestDataModule.from_argparse_args(args, transforms=transformer.train_transform)
+# dm = PadChestDataModule.from_argparse_args(args, transforms=transformer.train_transform)
+dm = MGBCXRDataModule.from_argparse_args(args, transforms=transformer.train_transform)
 params = vars(args)
 model = CheXFinetune.from_argparse_args(args, labels=dm.labels, params=params)
 
