@@ -11,12 +11,6 @@ from pathlib import Path
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 
-library_path = str(Path(__file__).parent.parent.parent)
-PYPATH = os.environ.get("PYTHONPATH", "").split(":")
-if library_path not in PYPATH:
-    PYPATH.append(library_path)
-    os.environ["PYTHONPATH"] = ":".join(PYPATH)
-
 from model_drift.callbacks import IOMonitor
 from model_drift.models.finetune import CheXFinetune
 from model_drift.azure_utils import download_model_azure, get_azure_logger
