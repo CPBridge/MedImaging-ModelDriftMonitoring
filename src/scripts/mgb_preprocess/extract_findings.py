@@ -113,47 +113,5 @@ def extract_findings(output_dir: Path) -> None:
     )
 
 
-# split the findings dataframe into 10 smaller dataframes and store them
-def split_findings():
-    findings_df = pd.read_csv(mgb_locations.reports_dir / 'findings.csv', header=None)
-    filename = 1
-    filepath = "/Volumes/qtim/datasets/private/xray_drift/reports/"
-    for i in range(findings_df.shape[0]):
-        if i % 10000 == 0:
-            df = findings_df.iloc[i:i+10000, :]
-            df.to_csv(filepath + "findings" + str(filename) + ".csv", header=None)
-            filename += 1
-
-
-# combine and output the raw_labels.csv file (based on findings)
-def output_raw_labels_df():
-    # read in and combine all the raw_labels files
-    raw_labels_df = pd.DataFrame()
-    for i in range(10):
-        filepath = str(mgb_locations.reports_dir) + "/raw_labels" + str(i + 1) + ".csv"
-        raw_labels_df_tem = pd.read_csv(filepath)
-        raw_labels_df_tem = raw_labels_df_tem.loc[(raw_labels_df_tem.Reports != '0'), :]
-        raw_labels_df = pd.concat([raw_labels_df, raw_labels_df_tem], ignore_index=True)
-
-    # output and store the combined raw labels file
-    raw_labels_df.to_csv(mgb_locations.raw_labels_csv)
-
-
 if __name__ == "__main__":
-    # extract_findings()
-    # split_findings()
-    # output_raw_labels_df()
-
-    # compare radiologist labeling with findings labels
-    # select unique identifiers from the radiologist labeling file
-    rad_labeling = pd.read_excel(mgb_locations.csv_dir / "radiologist_checked_labels.xlsx")
-    rad_labeling = rad_labeling.loc[(rad_labeling.Impression.notna()), :]
-    rad_labeling_unique_id = rad_labeling.loc[:, ['ANON_MRN', 'ANON_AccNumber']]
-
-    # read in labels.csv and filter reports
-    labels_df = pd.read_csv(mgb_locations.labels_csv)
-    labels_df_subset = labels_df.merge(rad_labeling_unique_id,
-                                       how="inner",
-                                       left_on=['PatientID', 'AccessionNumber'],
-                                       right_on=['ANON_MRN', 'ANON_AccNumber'])
-    labels_df_subset.to_csv(mgb_locations.csv_dir / "labels_subset.csv")
+    extract_findings()
