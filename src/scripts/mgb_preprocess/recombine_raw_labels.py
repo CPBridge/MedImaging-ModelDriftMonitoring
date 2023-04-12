@@ -14,8 +14,8 @@ def recombine_raw_labels():
     raw_labels_df = pd.DataFrame()
     splits_dir = mgb_locations.csv_dir / "raw_labels_splits"
     for i in range(10):
-        filepath = splits_dir / "raw_labels{i + 1}.csv"
-        raw_labels_df_tem = pd.read_csv(filepath)
+        filepath = splits_dir / f"raw_labels{i + 1}.csv"
+        raw_labels_df_tem = pd.read_csv(filepath, dtype=str)
         raw_labels_df_tem = raw_labels_df_tem.loc[(raw_labels_df_tem.Reports != '0'), :]
         raw_labels_df = pd.concat([raw_labels_df, raw_labels_df_tem], ignore_index=True)
 
