@@ -14,3 +14,10 @@
   if they were previously split so that the next step can be parallelized.
 - Run `merge_labels.py` to merge the raw labels back with the rest of the
   anonymized information. This creates `csv/labels.csv`.
+- Run `preprocess_labels.py`, which applies project-specific preprocessing to
+  the labels by combining labels, removing labels that are not used and
+  converting missing values to negatives and uncertain values to positives. The
+  output is placed into the project directory (rather than the dataset
+  directory) in `preprocessed_labels/labels.csv`
+- Run `create_report_checking_csv.py` to create a stratified sample of the
+  preprocessed labels in a format suitable for checking by a radiologist.
