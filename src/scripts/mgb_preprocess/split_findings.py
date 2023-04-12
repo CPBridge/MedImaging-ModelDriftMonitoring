@@ -17,7 +17,7 @@ def split_findings():
     for i in range(findings_df.shape[0]):
         if i % 10000 == 0:
             df = findings_df.iloc[i:i+10000, :]
-            df.to_csv(splits_dir / "findings{split_number}.csv", header=None)
+            df.to_csv(splits_dir / f"findings{split_number}.csv", header=None)
             split_number += 1
 
 

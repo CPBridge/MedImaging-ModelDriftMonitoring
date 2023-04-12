@@ -24,6 +24,7 @@ dicom_dir = data_dir / "dicom"
 reports_dir = data_dir / "reports"
 reports_csv = reports_dir / "combined_reports.csv"
 impressions_csv = reports_dir / "impressions.csv"
+findings_csv = reports_dir / "findings.csv"
 
 # Directories containing project files
 project_dir = mount_point / "qtim/projects/xray_drift"
@@ -33,3 +34,4 @@ model_dir = project_dir / "models"
 analysis_dir = project_dir / "analysis"
 preprocessed_labels_dir = project_dir / "preprocessed_labels"
 preprocessed_labels_csv = preprocessed_labels_dir / "labels.csv"
+report_checking_dir = project_dir / "report_checking"
