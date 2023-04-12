@@ -20,7 +20,7 @@ def recombine_raw_labels():
         raw_labels_df = pd.concat([raw_labels_df, raw_labels_df_tem], ignore_index=True)
 
     # output and store the combined raw labels file
-    raw_labels_df.to_csv(mgb_locations.raw_labels_csv)
+    raw_labels_df.to_csv(mgb_locations.raw_labels_csv, index=False)
 
 
 if __name__ == "__main__":
