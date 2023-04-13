@@ -1,33 +1,44 @@
+from pathlib import Path
+
 import click
 import pandas as pd
 
 from pycrumbs import tracked
 
 from model_drift import mgb_locations
+from model_drift.data import mgb_data
 
 
 @click.command()
 @click.argument("n", type=int)
-@tracked(literal_directory=mgb_locations.report_checking_dir)
-def create_report_checking_csv(n: int):
+@click.option(
+    "--output-dir",
+    "-o",
+    type=click.Path(path_type=Path, file_okay=False, writable=True),
+    default=mgb_locations.report_checking_dir,
+    help="Output directory",
+    show_default=True,
+)
+@tracked(directory_parameter="output_dir")
+def create_report_checking_csv(n: int, output_dir: Path):
     """Create a CSV file of a random selection of reports to check.
 
-    Sample is stratified by calendar month (and year).
+    The output contains N reports sampled from each day of the dataset.
 
     """
-    # Load in raw impressions file
-    impressions = pd.read_csv(
-        mgb_locations.impressions_csv,
+    # Load in raw findings file
+    findings = pd.read_csv(
+        mgb_locations.findings_csv,
         header=None,
-        names=["Impression"],
+        names=["Findings"],
     )
     reports = pd.read_csv(mgb_locations.reports_csv, dtype=str)
     reports = reports[["Patient MRN", "Accession Number", "Report Text"]].copy()
-    reports = pd.concat([reports, impressions], axis=1)
+    reports = pd.concat([reports, findings], axis=1)
 
     # Load in labels file
     labels = pd.read_csv(
-        mgb_locations.labels_csv,
+        mgb_locations.preprocessed_labels_csv,
         dtype={"PatientID": str, "AccessionNumber": str, "StudyDate": str},
         index_col=0,
     )
@@ -66,33 +77,21 @@ def create_report_checking_csv(n: int):
         .sample(n=n, random_state=random_state)  # Sample n per group
         .sample(frac=1, random_state=random_state)  # Shuffle full result
     )
-    sample["ImpressionExtractionError"] = ""
+    sample["FindingsExtractionError"] = ""
+    label_cols = list(mgb_data.LABEL_GROUPINGS.keys())
     sample = sample[
         [
-            "Impression",
-            "No Finding",
-            "Enlarged Cardiomediastinum",
-            "Cardiomegaly",
-            "Lung Lesion",
-            "Lung Opacity",
-            "Edema",
-            "Consolidation",
-            "Pneumonia",
-            "Atelectasis",
-            "Pneumothorax",
-            "Pleural Effusion",
-            "Pleural Other",
-            "Fracture",
-            "Support Devices",
+            "Findings",
+            *mgb_data.LABEL_GROUPINGS.keys(),
             "ANON_MRN",
             "ANON_AccNumber",
             "Report Text",
-            "ImpressionExtractionError",
+            "FindingsExtractionError",
         ]
     ].copy()
 
     sample.to_csv(
-        mgb_locations.report_checking_dir / "reports_to_check.csv",
+        output_dir / "reports_to_check.csv",
         index=False
     )
 
