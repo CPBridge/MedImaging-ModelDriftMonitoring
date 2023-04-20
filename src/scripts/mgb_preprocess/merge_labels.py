@@ -13,14 +13,19 @@ from model_drift import mgb_locations
 )
 def merge_labels(raw_labels_csv: Path) -> None:
     """Merge labels to create an anonymized set."""
-    labels_df = pd.read_csv(raw_labels_csv)
+    labels_df = pd.read_csv(raw_labels_csv, dtype=str)
     study_df = pd.read_csv(
         mgb_locations.study_list_csv,
         index_col=0,
+        dtype=str,
     )
     master_df = pd.concat([study_df, labels_df], axis=1)
 
-    id_map_df = pd.read_csv(mgb_locations.crosswalk_csv, index_col=0)
+    id_map_df = pd.read_csv(
+        mgb_locations.crosswalk_csv,
+        index_col=0,
+        dtype=str,
+    )
     joined_df = master_df.merge(
         id_map_df,
         how="left",
