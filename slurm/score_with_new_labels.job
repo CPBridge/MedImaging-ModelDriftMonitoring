@@ -16,5 +16,5 @@ python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/score_
     --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
     --model_path /autofs/cluster/qtim/projects/xray_drift/models/epoch\=4-step\=29844.ckpt \
     --trained_label_set chexpert \
-    --output_dir test_outputs \
+    --output_dir /autofs/cluster/qtim/projects/xray_drift/inferences/mgb_data_chexpert_model \
     --num_workers 0
