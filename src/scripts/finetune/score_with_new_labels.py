@@ -82,7 +82,6 @@ def score_with_new_labels(
     dm.load_datasets()
     print('Done Loading dataset')
 
-    results = []
     with torch.no_grad():
         for b, batch in enumerate(dm.test_dataloader()):
             print("Batch", b)
@@ -109,11 +108,10 @@ def score_with_new_labels(
                     "activation": mapped_activations.tolist(),
                     "label": lab.tolist(),
                 }
-                results.append(json.dumps(image_results))
+                results_line = json.dumps(image_results)
 
-    with output_dir.joinpath("preds.jsonl").open("w") as of:
-        for line in results:
-            print(line, file=of)
+                with output_dir.joinpath("preds.jsonl").open("a") as of:
+                    print(results_line, file=of)
 
     print("Done")
 
