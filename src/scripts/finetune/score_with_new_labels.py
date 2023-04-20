@@ -47,7 +47,7 @@ def load_model(
     return model
 
 
-@tracked(directory_parameter="output_dir")
+@tracked(directory_parameter="output_dir", require_empty_directory=True)
 def score_with_new_labels(
         output_dir: Path,
         args: argparse.Namespace,
