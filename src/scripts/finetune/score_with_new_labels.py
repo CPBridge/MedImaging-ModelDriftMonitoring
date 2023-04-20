@@ -1,5 +1,6 @@
 import argparse
 from collections import OrderedDict
+import json
 from pathlib import Path
 
 import pytorch_lightning as pl
@@ -7,7 +8,7 @@ from pycrumbs import tracked
 import torch
 from torchvision import models
 
-from model_drift.data import padchest, chexpert
+from model_drift.data import padchest, chexpert, mgb_data
 from model_drift.data.datamodules import MGBCXRDataModule
 from model_drift.data.transform import VisionTransformer
 
@@ -52,21 +53,69 @@ def score_with_new_labels(
         args: argparse.Namespace,
 ):
     train_labels = TRAINED_LABELS[args.trained_label_set]
+    print("Train labels")
+    print(train_labels)
+    print("New Labels")
+    print(list(mgb_data.LABEL_GROUPINGS.keys()))
+
+    # Figure out the label mapping
+    label_mapping = []
+    for lab in mgb_data.LABEL_GROUPINGS.keys():
+        try:
+            orig_index = train_labels.index(lab)
+        except ValueError as e:
+            raise RuntimeError(
+                f"Label {lab} not found in training labels"
+            ) from e
+        label_mapping.append(orig_index)
 
     model = load_model(args.model_path, num_classes=len(train_labels))
+    model = model.cuda()
     model.eval()
 
     transformer = VisionTransformer.from_argparse_args(args)
-    dm = MGBCXRDataModule.from_argparse_args(args, transforms=transformer.train_transform)
+    dm = MGBCXRDataModule.from_argparse_args(
+        args,
+        transforms=transformer.train_transform
+    )
     print('Loading dataset')
     dm.load_datasets()
     print('Done Loading dataset')
 
-    for batch in dm.test_dataloader():
-        print(batch[0])
+    results = []
+    with torch.no_grad():
+        for b, batch in enumerate(dm.test_dataloader()):
+            print("Batch", b)
 
+            im = batch['image'].cuda()
+            prediction = model(im)
+            activation = torch.sigmoid(prediction).cpu().numpy()
+            prediction = prediction.cpu().numpy()
 
+            for pred, act, lab, ind in zip(
+                    prediction,
+                    activation,
+                    batch['label'].numpy(),
+                    batch['index'],
+            ):
+                # Map the activations and predictions from the original set
+                # of training labels to the new set
+                mapped_predictions = pred[label_mapping]
+                mapped_activations = act[label_mapping]
 
+                image_results = {
+                    "index": ind,
+                    "score": mapped_predictions.tolist(),
+                    "activation": mapped_activations.tolist(),
+                    "label": lab.tolist(),
+                }
+                results.append(json.dumps(image_results))
+
+    with output_dir.joinpath("preds.jsonl").open("w") as of:
+        for line in results:
+            print(line, file=of)
+
+    print("Done")
 
 
 if __name__ == "__main__":
