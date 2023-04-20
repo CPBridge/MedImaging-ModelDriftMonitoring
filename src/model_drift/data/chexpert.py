@@ -1,0 +1,16 @@
+LABELS = [
+    "Atelectasis",
+    "Cardiomegaly",
+    "Consolidation",
+    "Edema",
+    "Enlarged Cardiomediastinum",
+    "Fracture",
+    "Lesion",
+    "No Finding",
+    "Opacity",
+    "Pleural Abnormalities",
+    "Pleural Effusion",
+    "Pneumonia",
+    "Pneumothorax",
+    "Support Devices",
+]
