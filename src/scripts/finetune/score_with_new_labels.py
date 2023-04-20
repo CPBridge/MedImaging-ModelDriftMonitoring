@@ -23,7 +23,7 @@ def load_model(
         model_path: Path,
         num_classes: int,
 ):
-    orig_state_dict = torch.load(model_path, map_location='cpu')
+    orig_state_dict = torch.load(model_path, map_location='cuda')
     new_state_dict = OrderedDict()
 
     # Somehow the state_dicts got pretty messed up... need to do some surgery
