@@ -17,6 +17,7 @@ from model_drift.azure_utils import download_model_azure, get_azure_logger
 # from model_drift.data.datamodules import PadChestDataModule
 from model_drift.data.datamodules import MGBCXRDataModule
 from model_drift.data.transform import VisionTransformer
+from model_drift.data.mgb_data import LABEL_GROUPINGS
 
 from pycrumbs import tracked
 
@@ -90,6 +91,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     transformer = VisionTransformer.from_argparse_args(args)
     # dm = PadChestDataModule.from_argparse_args(args, transforms=transformer.train_transform)
     dm = MGBCXRDataModule.from_argparse_args(args, transforms=transformer.train_transform)
+    args.num_classes = len(LABEL_GROUPINGS)
     params = vars(args)
     model = CheXFinetune.from_argparse_args(args, labels=dm.labels, params=params)
 
