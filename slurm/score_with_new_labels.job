@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+#SBATCH -o /homes/8/cpb28/slurm_log/med-image-drift-scoring-%j.out
+#SBATCH -J med-image-drift-scoring
+#SBATCH -p rtx6000,rtx8000
+#SBATCH -A qtim
+#SBATCH -n 1
+#SBATCH --cpus-per-task=1
+#SBATCH --gpus 1
+#SBATCH -t 12:00:00
+
+export PYENV_VERSION="med-image-drift"
+export PYTHONPATH="${HOME}/repos/MedImaging-ModelDriftMonitoring/src":${PYTHONPATH}
+
+python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/score_with_new_labels.py \
+    --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
+    --model_path /autofs/cluster/qtim/projects/xray_drift/models/epoch\=4-step\=29844.ckpt \
+    --trained_label_set chexpert \
+    --output_dir test_outputs \
+    --num_workers 0
