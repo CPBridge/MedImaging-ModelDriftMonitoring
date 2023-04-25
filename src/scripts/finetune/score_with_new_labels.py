@@ -41,7 +41,7 @@ def load_model(
                 break
         new_state_dict[k] = v
 
-    model = models.densenet121(pretrained=False, num_classes=14)
+    model = models.densenet121(pretrained=False, num_classes=num_classes)
     model.load_state_dict(new_state_dict)
 
     return model
