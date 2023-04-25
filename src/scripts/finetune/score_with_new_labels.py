@@ -54,7 +54,7 @@ def score_with_new_labels(
 ):
     train_labels = TRAINED_LABELS[args.trained_label_set]
 
-    if train_labels == 'padchest':
+    if args.trained_label_set == 'padchest':
         # HACKS
         train_labels[train_labels.index("Lesion")] = "Lung Lesion"
         # Should definitely fix this at some point...
