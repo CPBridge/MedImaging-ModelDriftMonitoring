@@ -57,6 +57,7 @@ def score_with_new_labels(
     if args.trained_label_set == 'padchest':
         # HACKS
         train_labels[train_labels.index("Lesion")] = "Lung Lesion"
+        train_labels[train_labels.index("Opacity")] = "Lung Opacity"
         # Should definitely fix this at some point...
         train_labels[train_labels.index("Pleural Abnormalities")] = "Pneumothorax"
 
