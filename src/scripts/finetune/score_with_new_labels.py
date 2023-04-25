@@ -53,6 +53,13 @@ def score_with_new_labels(
         args: argparse.Namespace,
 ):
     train_labels = TRAINED_LABELS[args.trained_label_set]
+
+    if train_labels == 'padchest':
+        # HACKS
+        train_labels[train_labels.index("Lesion")] = "Lung Lesion"
+        # Should definitely fix this at some point...
+        train_labels[train_labels.index("Pleural Abnormalities")] = "Pneumothorax"
+
     print("Train labels")
     print(train_labels)
     print("New Labels")
