@@ -32,7 +32,7 @@ def load_model(
         prefixes = ["module.model."]
     elif "state_dict" in orig_state_dict:
         state_key = "state_dict"
-        prefixes = ['model.model.', "model."]
+        prefixes = ['model.model.', "model.", "backbone."]
 
     for k, v in orig_state_dict[state_key].items():
         for prefix in prefixes:
