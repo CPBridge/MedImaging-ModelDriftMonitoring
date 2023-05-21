@@ -264,16 +264,31 @@ class MGBCXRDataset(BaseDataset):
             df = pd.read_csv(self.dataframe_or_csv, dtype=str, index_col=0)
 
         self.folder_dir = Path(self.folder_dir)
+        self.cache_dir = self.folder_dir.with_name("preprocessed_cache")
+
+        self.cache_dir.mkdir(exist_ok=True)
         for _, row in df.iterrows():
             # Read in image from path
-            image_path = (
-                self.folder_dir /
+            cache_path = (
+                self.cache_dir /
                 (
                     f"studies/{row.StudyInstanceUID}/series/"
                     f"{row.SeriesInstanceUID}/instances/{row.SOPInstanceUID}"
+                    f"_preprocessed.png"
                 )
             )
-            self.image_paths.append(image_path)
+            if not cache_path.exists():
+                image_path = (
+                    self.folder_dir /
+                    (
+                        f"studies/{row.StudyInstanceUID}/series/"
+                        f"{row.SeriesInstanceUID}/instances/{row.SOPInstanceUID}"
+                    )
+                )
+                arr = self.read_from_dicom(image_path)
+                im = Image.from_array(arr)
+                im.save(cache_path)
+            self.image_paths.append(cache_path)
 
             labels = []
             for c in self.LABEL_COLUMNS:
@@ -292,16 +307,21 @@ class MGBCXRDataset(BaseDataset):
             self.recon_image_path.append(image_id + '.png')
 
 
-    def read_image(self, image_path):
+    def read_image(self, image_path) -> Image:
+        """Read an image from the path."""
+        im = Image.open(image_path)
+        im = im.convert("RGB")
+        return im
+
+    @staticmethod
+    def read_from_dicom(image_path) -> np.ndarray:
         dcm = pydicom.dcmread(image_path)
         arr = dcm.pixel_array
         max_val = 2 ** dcm.BitsStored - 1
         if dcm.PhotometricInterpretation == "MONOCHROME1":
             arr = max_val - arr
-        # arr = (arr / max_val) * 255
         arr_min = arr.min()
         arr_max = arr.max()
         arr = ((arr - arr_min) / (arr_max - arr_min)) * 255
-        im = Image.fromarray(arr.astype(np.uint8))
-        im = im.convert("RGB")
-        return im
+        arr = arr.astype(np.uint8)
+        return arr

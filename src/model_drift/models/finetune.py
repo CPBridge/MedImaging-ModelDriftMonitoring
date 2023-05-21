@@ -21,7 +21,9 @@ class CheXFinetune(VisionModuleBase):
             step_size=7,
             gamma=0.1,
             freeze_backbone=False,
-            labels=None, params=None
+            labels=None,
+            params=None,
+            map_location=None,
     ):
         super().__init__(labels=labels, params=params)
         self.learning_rate = learning_rate
@@ -38,7 +40,7 @@ class CheXFinetune(VisionModuleBase):
             model.classifier.bias = torch.nn.Parameter(torch.randn(14))
 
             new_state_dict = OrderedDict()
-            pretrained = torch.load(pretrained)
+            pretrained = torch.load(pretrained, map_location=map_location)
 
             if "model_state" in pretrained:
                 state_key = "model_state"
