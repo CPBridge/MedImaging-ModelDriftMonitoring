@@ -17,6 +17,6 @@ python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/train.
     --batch_size 64 \
     --cache_folder /autofs/cluster/qtim/projects/xray_drift/numpy_cache/ \
     --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
-    --output_dir /autofs/cluster/qtim/projects/xray_drift/inferences/mgb_data_chexpert_model/from_chexpert_retrain_frontal_only \
+    --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/from_chexpert_retrain_frontal_only \
     --num_workers 8 \
     --pretrained '/autofs/cluster/qtim/projects/xray_drift/models/epoch=4-step=29844.ckpt'
