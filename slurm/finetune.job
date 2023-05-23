@@ -2,7 +2,7 @@
 
 #SBATCH -o /homes/8/cpb28/slurm_log/med-image-drift-finetune-%j.out
 #SBATCH -J med-image-drift-finetune
-#SBATCH -p rtx6000,rtx8000
+#SBATCH -p rtx8000
 #SBATCH -A qtim
 #SBATCH -n 1
 #SBATCH --cpus-per-task=8
@@ -14,7 +14,7 @@ export PYTHONPATH="${HOME}/repos/MedImaging-ModelDriftMonitoring/src":${PYTHONPA
 
 python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/train.py \
     --frontal_only 1 \
-    --batch_size 24 \
+    --batch_size 64 \
     --cache_folder /autofs/cluster/qtim/projects/xray_drift/numpy_cache/ \
     --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
     --output_dir /autofs/cluster/qtim/projects/xray_drift/inferences/mgb_data_chexpert_model/from_chexpert_retrain_frontal_only \
