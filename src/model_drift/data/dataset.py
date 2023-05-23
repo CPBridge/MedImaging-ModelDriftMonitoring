@@ -5,6 +5,7 @@
 import multiprocessing as mp
 import os
 from pathlib import Path
+from time import time
 
 import numpy as np
 import pandas as pd
@@ -301,7 +302,7 @@ class MGBCXRDataset(BaseDataset):
         else:
             # Read in from raw DICOM
             arr = self.read_from_dicom(image_path)
-        im = Image.fromarray(image_path)
+        im = Image.fromarray(arr)
         im = im.convert("RGB")
         return im
 
@@ -334,12 +335,13 @@ class MGBCXRDataset(BaseDataset):
             cache_dir / (str(image_path.relative_to(self.folder_dir)) + ".npy")
             for image_path in self.image_paths
         ]
-        args = zip(self.image_paths, cache_paths)
-        if num_workers > 0:
-            with mp.Pool(num_workers) as p:
-                p.starmap(MGBCXRDataset._cache_image, args)
-        else:
-            for impath, cachepath in args:
-                MGBCXRDataset._cache_image(impath, cachepath)
+        if not cache_paths[0].exists():
+            args = zip(self.image_paths, cache_paths)
+            if num_workers > 0:
+                with mp.Pool(num_workers) as p:
+                    p.starmap(MGBCXRDataset._cache_image, args)
+            else:
+                for impath, cachepath in args:
+                    MGBCXRDataset._cache_image(impath, cachepath)
         self.image_paths = cache_paths
         self.has_cache = True

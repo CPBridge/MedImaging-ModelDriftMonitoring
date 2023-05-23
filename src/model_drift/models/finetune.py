@@ -40,6 +40,8 @@ class CheXFinetune(VisionModuleBase):
             model.classifier.bias = torch.nn.Parameter(torch.randn(14))
 
             new_state_dict = OrderedDict()
+            if map_location is None:
+                map_location = torch.device('cuda:0')
             pretrained = torch.load(pretrained, map_location=map_location)
 
             if "model_state" in pretrained:
