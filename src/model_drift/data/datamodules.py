@@ -168,7 +168,7 @@ class BaseDatamodule(pl.LightningDataModule):
     def add_argparse_args(cls, parser, **kwargs):
         group = parser.add_argument_group("data")
         group.add_argument(
-            "--data_folder", type=str, dest="data_folder", help="data folder")
+            "--data_folder", type=str, dest="data_folder", help="data folder", required=True, )
         group.add_argument("--batch_size", type=int, dest="batch_size", help="batch_size", default=64)
         group.add_argument("--num_workers", type=int, dest="num_workers", help="number of workers for loading",
                            default=-1, )
