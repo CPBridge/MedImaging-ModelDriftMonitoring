@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+#SBATCH -o /homes/8/cpb28/slurm_log/med-image-drift-scoring-%j.out
+#SBATCH -J med-image-drift-make-cache
+#SBATCH -p basic
+#SBATCH -A qtim
+#SBATCH -n 1
+#SBATCH --cpus-per-task=16
+#SBATCH -t 12:00:00
+#SBATCH --mem 8G
+
+export PYENV_VERSION="med-image-drift"
+export PYTHONPATH="${HOME}/repos/MedImaging-ModelDriftMonitoring/src":${PYTHONPATH}
+
+python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/mgb_preprocess/make_cache.py \
+    --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
+    --cache_folder /autofs/cluster/qtim/projects/xray_drift/numpy_cache/ \
+    --num_workers 16

@@ -2,8 +2,10 @@
 #  Copyright (c) Microsoft Corporation. All rights reserved.
 #  Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 #  ------------------------------------------------------------------------------------------
+import multiprocessing as mp
 import os
 from pathlib import Path
+from time import time
 
 import numpy as np
 import pandas as pd
@@ -258,14 +260,15 @@ class MGBCXRDataset(BaseDataset):
     LABEL_COLUMNS = list(mgb_data.LABEL_GROUPINGS.keys())
 
     def prepare_data(self):
+        self.has_cache = False
         if isinstance(self.dataframe_or_csv, pd.DataFrame):
             df = self.dataframe_or_csv
         else:
             df = pd.read_csv(self.dataframe_or_csv, dtype=str, index_col=0)
 
         self.folder_dir = Path(self.folder_dir)
+
         for _, row in df.iterrows():
-            # Read in image from path
             image_path = (
                 self.folder_dir /
                 (
@@ -291,17 +294,54 @@ class MGBCXRDataset(BaseDataset):
             self.image_index.append(image_id)
             self.recon_image_path.append(image_id + '.png')
 
+    def read_image(self, image_path) -> Image:
+        """Read an image from the path."""
+        if hasattr(self, "has_cache") and self.has_cache:
+            # Read in cached version as npy
+            arr = np.load(image_path)
+        else:
+            # Read in from raw DICOM
+            arr = self.read_from_dicom(image_path)
+        im = Image.fromarray(arr)
+        im = im.convert("RGB")
+        return im
 
-    def read_image(self, image_path):
+    @staticmethod
+    def read_from_dicom(image_path) -> np.ndarray:
         dcm = pydicom.dcmread(image_path)
         arr = dcm.pixel_array
         max_val = 2 ** dcm.BitsStored - 1
         if dcm.PhotometricInterpretation == "MONOCHROME1":
             arr = max_val - arr
-        # arr = (arr / max_val) * 255
         arr_min = arr.min()
         arr_max = arr.max()
         arr = ((arr - arr_min) / (arr_max - arr_min)) * 255
-        im = Image.fromarray(arr.astype(np.uint8))
-        im = im.convert("RGB")
-        return im
+        arr = arr.astype(np.uint8)
+        return arr
+
+    @staticmethod
+    def _cache_image(dicom_path: Path, numpy_path: Path):
+        """Create a cached version of a DICOM file."""
+        if not numpy_path.exists():
+            arr = MGBCXRDataset.read_from_dicom(dicom_path)
+            numpy_path.parent.mkdir(exist_ok=True, parents=True)
+            np.save(numpy_path, arr)
+
+    def ensure_cache(self, cache_dir: Path, num_workers: int) -> None:
+        """Ensures that the given directory contains npy cached versions of
+        all images in the datasets."""
+        cache_dir.mkdir(exist_ok=True)
+        cache_paths = [
+            cache_dir / (str(image_path.relative_to(self.folder_dir)) + ".npy")
+            for image_path in self.image_paths
+        ]
+        if not cache_paths[0].exists():
+            args = zip(self.image_paths, cache_paths)
+            if num_workers > 0:
+                with mp.Pool(num_workers) as p:
+                    p.starmap(MGBCXRDataset._cache_image, args)
+            else:
+                for impath, cachepath in args:
+                    MGBCXRDataset._cache_image(impath, cachepath)
+        self.image_paths = cache_paths
+        self.has_cache = True

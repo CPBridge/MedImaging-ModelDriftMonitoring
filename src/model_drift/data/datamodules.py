@@ -516,6 +516,7 @@ class MGBCXRDataModule(BaseDatamodule):
         train_frontal_only=None,
         val_frontal_only=None,
         test_frontal_only=None,
+        cache_folder=None,
     ):
         super().__init__(
             data_folder=data_folder,
@@ -536,6 +537,7 @@ class MGBCXRDataModule(BaseDatamodule):
         )
         self.csv_folder = Path(csv_folder)
         self.labels_csv = Path(labels_csv)
+        self.cache_folder = Path(cache_folder) if cache_folder is not None else None
 
     @property
     def labels(self):
@@ -623,6 +625,13 @@ class MGBCXRDataModule(BaseDatamodule):
             **self.test_kwargs,
         )
 
+        if self.cache_folder is not None:
+            print(f"Creating cache at {self.cache_folder}")
+            self.train_dataset.ensure_cache(self.cache_folder, self.num_workers)
+            self.val_dataset.ensure_cache(self.cache_folder, self.num_workers)
+            self.test_dataset.ensure_cache(self.cache_folder, self.num_workers)
+            print(f"Done creating cache.")
+
     @classmethod
     def add_argparse_args(cls, parser, **kwargs):
         parser = super().add_argparse_args(parser, **kwargs)
@@ -639,6 +648,11 @@ class MGBCXRDataModule(BaseDatamodule):
             type=Path,
             help="Path to the CSV file containing labels",
             default=mgb_locations.preprocessed_labels_csv,
+        )
+        group.add_argument(
+            "--cache_folder",
+            type=Path,
+            help="Use this location to cache decompressed data.",
         )
 
         return parser
