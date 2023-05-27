@@ -5,10 +5,10 @@
 #SBATCH -p rtx6000,rtx8000
 #SBATCH -A qtim
 #SBATCH -n 1
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=10
 #SBATCH --gpus 1
 #SBATCH --mem 8G
-#SBATCH -t 12:00:00
+#SBATCH -t 18:00:00
 
 export PYENV_VERSION="med-image-drift"
 export PYTHONPATH="${HOME}/repos/MedImaging-ModelDriftMonitoring/src":${PYTHONPATH}
@@ -19,4 +19,4 @@ python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/score.
     --model '/autofs/cluster/qtim/projects/xray_drift/models/mgb/from_chexpert_retrain_frontal_only_lr1e-4/checkpoints/epoch=000.ckpt' \
     --dataset mgb \
     --output_dir /autofs/cluster/qtim/projects/xray_drift/inferences/mgb_data_from_chexpert_retrain_frontal_only_lr1e-4 \
-    --num_workers 0
+    --num_workers 8
