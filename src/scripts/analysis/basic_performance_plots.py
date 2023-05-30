@@ -36,6 +36,36 @@ def basic_performance_plots(
             finding_str = finding.lower().replace(' ', '_')
             p.save(output_dir / f'{finding_str}_{metric}.png')
 
+    # Unweighted MMC
+    mmc_cols = [
+        col for col in df.columns
+        if not col[0].startswith('performance')
+        and col[2] == 'distance'
+        and col[3] == 'mean'
+    ]
+
+    mmc_df = df[mmc_cols + [date_col]].copy()
+    ref_df = mmc_df[mmc_df[date_col] < mgb_data.VAL_DATE_END].copy()
+
+    # Normalize columns by mean and std of reference data
+    for c in mmc_cols:
+        mmc_df[c] = (mmc_df[c] - ref_df[c].mean()) / ref_df[c].std()
+
+    mmc_df['mmc'] = mmc_df.mean(axis=1)
+
+    p = (
+        plotnine.ggplot(
+            mmc_df,
+            plotnine.aes(mmc_df[date_col], y=mmc_df['mmc'])
+        )
+        + plotnine.geom_line()
+        + plotnine.ggtitle(f'Unweighted MMC')
+        + plotnine.theme(figure_size=(10, 6))
+        + plotnine.labs(x='Date', y='mmc')
+    )
+    finding_str = finding.lower().replace(' ', '_')
+    p.save(output_dir / f'unweighted_mmc.png')
+
 
 if __name__ == "__main__":
     basic_performance_plots()
