@@ -63,6 +63,14 @@ class CheXFinetune(VisionModuleBase):
         num_ftrs = model.classifier.in_features
         self.backbone = model
         self.backbone.classifier = nn.Linear(num_ftrs, num_classes)
+        #self.backbone.classifier = nn.Sequential(
+        #    nn.Linear(num_ftrs, int(num_ftrs/2)),
+        #    nn.ReLU(),
+        #    nn.BatchNorm1d(int(num_ftrs/2)),
+        #    nn.Dropout(0.05),
+        #    nn.Linear(int(num_ftrs/2), num_classes)
+        #)
+        
         self.activation = nn.Sigmoid()
         self.criterion = nn.BCELoss()
 
@@ -159,8 +167,13 @@ class CheXFinetune(VisionModuleBase):
             params=list(filter(lambda p: p.requires_grad, self.parameters())),
             lr=self.learning_rate,
         )
-        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=self.gamma)
+        # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=self.gamma)
+        lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.learning_rate, steps_per_epoch=200, epochs=30)
+        # lr_scheduler_config = {"scheduler":lr_scheduler, "interval":"step", "frequency":1, "strict":True, "name":None}
+        # return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+        
+        
 
     @classmethod
     def add_model_args(cls, parser):
