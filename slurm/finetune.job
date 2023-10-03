@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-#SBATCH -o /homes/5/fd811/slurm_log/med-image-drift-finetune_onecyclelr_random-%j.out
-#SBATCH -J med-image-drift-finetune_onecyclelr_random
-#SBATCH -p rtx6000
+#SBATCH -o /homes/5/fd881/slurm_log/from_chexpert_retrain_frontal_only_lr1e-4_frozen_step25_loadmemory-%j.out
+#SBATCH -J med-image-drift-finetune_onecyclelr_loadmemory
+#SBATCH -p rtx6000,rtx8000
 #SBATCH -A qtim
 #SBATCH -n 1
 #SBATCH --cpus-per-task=12
 #SBATCH --gpus 1
-#SBATCH --mem=128G
+#SBATCH --mem=312G
 #SBATCH -t 36:00:00
 
 export PYENV_VERSION="med-image-drift"
@@ -18,11 +18,10 @@ python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/train.
     --batch_size 64 \
     --random_augmentation True \
     --freeze_backbone 1 \
-    --cache_folder /autofs/cluster/qtim/projects/xray_drift/numpy_cache/ \
     --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
-    --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/from_chexpert_retrain_frontal_only_onecyclelr_random \
-    --default_root_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/from_chexpert_retrain_frontal_only_onecyclelr_random \
+    --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/from_chexpert_retrain_frontal_only_lr1e-4_frozen_step25_loadmemory \
+    --default_root_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/from_chexpert_retrain_frontal_only_lr1e-4_frozen_step25_loadmemory \
     --num_workers 12 \
-    --learning_rate 1e-3 \
-    --max_epochs 30 \
-    --pretrained '/autofs/cluster/qtim/projects/xray_drift/models/epoch=4-step=29844.ckpt'
+    --learning_rate 1e-4 \
+    --step_size 25 \
+    --pretrained '/autofs/cluster/qtim/projects/xray_drift/models/epoch=4-step=29844.ckpt' \

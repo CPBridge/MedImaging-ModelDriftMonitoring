@@ -258,6 +258,7 @@ class MIDRCDataset(BaseDataset):
 
 class MGBCXRDataset(BaseDataset):
     LABEL_COLUMNS = list(mgb_data.LABEL_GROUPINGS.keys())
+    data = {}  # Class variable to store data in memory
 
     def prepare_data(self):
         self.has_cache = False
@@ -294,6 +295,7 @@ class MGBCXRDataset(BaseDataset):
             self.image_index.append(image_id)
             self.recon_image_path.append(image_id + '.png')
 
+    
     def read_image(self, image_path) -> Image:
         """Read an image from the path."""
         if hasattr(self, "has_cache") and self.has_cache:
@@ -305,6 +307,71 @@ class MGBCXRDataset(BaseDataset):
         im = Image.fromarray(arr)
         im = im.convert("RGB")
         return im
+
+    #@staticmethod
+    #def read_image(image_path) -> Image:
+    #    """Read an image from the path."""
+    #    
+    #    # Read in from raw DICOM
+    #    arr = self.read_from_dicom(image_path)
+    #    im = Image.fromarray(arr)
+    #    im = im.convert("RGB")
+    #    return im
+
+
+    
+    #modified to work with reading from memory, 
+    def __getitem__(self, index):
+        dataset_type = self.dataset_type  # Ensure you set this attribute when creating the dataset instance
+
+        # Check if data is loaded into memory
+        if self.data is not None and dataset_type in self.data:
+            image_data_original_ram = self.data[dataset_type][index]
+            image_data_original = Image.fromarray(image_data_original_ram)
+            image_data_original = image_data_original.convert("RGB")
+        else:
+            image_path = self.image_paths[index]
+            image_data_original = self.read_image(image_path)
+
+        image_data = self.image_transformation(image_data_original)
+        
+        onp = np.array(image_data_original)
+
+        return {
+            "image": image_data,
+            "label": torch.FloatTensor(self.image_labels[index]),
+            "frontal": torch.FloatTensor([self.frontal[index]]),
+            "index": self.image_index[index],
+            "recon_path": self.recon_image_path[index],
+            "o_mean": torch.tensor([onp.mean()], dtype=torch.float),
+            "o_max": torch.tensor([onp.max()], dtype=torch.float),
+            "o_min": torch.tensor([onp.min()], dtype=torch.float),
+        }
+        
+
+    @staticmethod
+    def read_and_store_image(cls, image_path, dataset_type, data_dict):
+        image = cls.read_from_dicom(image_path)
+        data_dict[dataset_type].append(image)
+    
+    @classmethod
+    def load_data_into_memory(cls, folder_dir, image_paths, dataset_type, num_workers=0):
+        start_time = time()
+        print(f"Started loading {dataset_type} images into memory")
+        with mp.Manager() as manager:
+            data_dict = manager.dict()
+            data_dict[dataset_type] = manager.list()  
+            args = [(cls, path, dataset_type, data_dict) for path in image_paths]
+            if num_workers > 0:
+                with mp.Pool(num_workers) as p:
+                    p.starmap(cls.read_and_store_image, args)
+            else:
+                for arg in args:
+                    cls.read_and_store_image(*arg)
+            cls.data = {dataset_type: list(data_dict[dataset_type])}  
+        elapsed_time = time() - start_time
+        print(f"Finished loading {len(cls.data[dataset_type])} images into memory for {dataset_type} in {elapsed_time:.2f} seconds")
+
 
     @staticmethod
     def read_from_dicom(image_path) -> np.ndarray:

@@ -6,6 +6,7 @@ import argparse
 import os
 from pathlib import Path
 
+
 import datetime
 import pandas as pd
 import pydicom
@@ -492,6 +493,8 @@ class MGBCXRDataModule(BaseDatamodule):
     ALLOWABLE_MODALITIES = ('CR', 'DX')
     ALLOWABLE_BODY_PARTS = ('CHEST',)
     ALLOWABLE_PIS = ('MONOCHROME1', 'MONOCHROME2')
+    
+    
 
     def __init__(
         self,
@@ -591,12 +594,22 @@ class MGBCXRDataModule(BaseDatamodule):
         )
         if self.train_kwargs["frontal_only"]:
             self.train = self.train[self.train.is_frontal].copy()
+            
+        
+
+        # Create train_dataset instance and set dataset_type attribute
         self.train_dataset = self.__dataset_cls__(
             self.data_folder,
             self.train,
             transform=self.train_transforms,
             **self.train_kwargs,
         )
+        
+        if self.cache_folder is None:
+            print(f"There are {len(self.train_dataset.image_paths)} images in the train dataset")
+            self.train_dataset.dataset_type = 'train'
+            self.__dataset_cls__.load_data_into_memory(self.data_folder, self.train_dataset.image_paths, 'train', num_workers=self.num_workers)
+            
 
         self.val = val_labels_df.merge(
             dcm_df,
@@ -605,13 +618,20 @@ class MGBCXRDataModule(BaseDatamodule):
         )
         if self.val_kwargs["frontal_only"]:
             self.val = self.val[self.val.is_frontal].copy()
+
+        
+        
         self.val_dataset = self.__dataset_cls__(
             self.data_folder,
             self.val,
             transform=self.val_transforms,
             **self.val_kwargs,
         )
-
+        if self.cache_folder is None:
+            print(f"There are {len(self.val_dataset.image_paths)} images in the validation dataset")
+            self.val_dataset.dataset_type = 'val'
+            self.__dataset_cls__.load_data_into_memory(self.data_folder, self.val_dataset.image_paths, 'val')
+        
         # For now, test is simply the entire dataset
         self.test = labels_df.merge(
             dcm_df,
