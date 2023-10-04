@@ -15,13 +15,14 @@ export PYTHONPATH="${HOME}/repos/MedImaging-ModelDriftMonitoring/src":${PYTHONPA
 
 python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/train.py \
     --frontal_only 1 \
-    --batch_size 8 \
+    --batch_size 64 \
     --random_augmentation True \
     --freeze_backbone 1 \
     --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
     --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/from_chexpert_retrain_frontal_only_lr1e-4_frozen_step25_loadmemory_temp \
     --default_root_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/from_chexpert_retrain_frontal_only_lr1e-4_frozen_step25_loadmemory_temp \
-    --num_workers 4 \
+    --num_workers 12 \
     --learning_rate 1e-4 \
     --step_size 25 \
     --pretrained '/autofs/cluster/qtim/projects/xray_drift/models/epoch=4-step=29844.ckpt' \
+    --max_epochs 80 \ 
