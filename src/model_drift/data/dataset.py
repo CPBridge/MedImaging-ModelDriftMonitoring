@@ -6,6 +6,8 @@ import multiprocessing as mp
 import os
 from pathlib import Path
 from time import time
+from typing import Union
+
 
 import numpy as np
 import pandas as pd
@@ -301,11 +303,12 @@ class MGBCXRDataset(BaseDataset):
         if hasattr(self, "has_cache") and self.has_cache:
             # Read in cached version as npy
             arr = np.load(image_path)
+            im = torch.tensor(arr)
         else:
             # Read in from raw DICOM
-            arr = self.read_from_dicom(image_path)
-        im = Image.fromarray(arr)
-        im = im.convert("RGB")
+            im = self.read_from_dicom(image_path)
+        #im = Image.fromarray(arr)
+        #im = im.convert("RGB")
         return im
 
     #@staticmethod
@@ -326,16 +329,21 @@ class MGBCXRDataset(BaseDataset):
 
         # Check if data is loaded into memory
         if self.data is not None and dataset_type in self.data:
-            image_data_original_ram = self.data[dataset_type][index]
-            image_data_original = Image.fromarray(image_data_original_ram)
-            image_data_original = image_data_original.convert("RGB")
+            image_data_original = self.data[dataset_type][index]
+            #image_data_original = Image.fromarray(image_data_original_ram)
+            #image_data_original = image_data_original.convert("RGB")
         else:
             image_path = self.image_paths[index]
             image_data_original = self.read_image(image_path)
 
+        if len(image_data_original.shape) == 2:
+            image_data_original = image_data_original.unsqueeze(0).expand(3, -1, -1)
+
+        
+        image_data_original = image_data_original.float()
         image_data = self.image_transformation(image_data_original)
         
-        onp = np.array(image_data_original)
+        onp = image_data_original
 
         return {
             "image": image_data,
@@ -343,15 +351,18 @@ class MGBCXRDataset(BaseDataset):
             "frontal": torch.FloatTensor([self.frontal[index]]),
             "index": self.image_index[index],
             "recon_path": self.recon_image_path[index],
-            "o_mean": torch.tensor([onp.mean()], dtype=torch.float),
-            "o_max": torch.tensor([onp.max()], dtype=torch.float),
-            "o_min": torch.tensor([onp.min()], dtype=torch.float),
+            # "o_mean": torch.tensor([onp.mean()], dtype=torch.float),
+            # "o_max": torch.tensor([onp.max()], dtype=torch.float),
+            # "o_min": torch.tensor([onp.min()], dtype=torch.float),
+            "o_mean": onp.mean(), 
+            "o_max": onp.max(), 
+            "o_min": onp.min(), 
         }
         
 
     @staticmethod
     def read_and_store_image(cls, image_path, dataset_type, data_dict):
-        image = cls.read_from_dicom(image_path)
+        image = cls.read_from_dicom(image_path, return_numpy=True)
         data_dict[dataset_type].append(image)
     
     @classmethod
@@ -368,13 +379,13 @@ class MGBCXRDataset(BaseDataset):
             else:
                 for arg in args:
                     cls.read_and_store_image(*arg)
-            cls.data = {dataset_type: list(data_dict[dataset_type])}  
+            cls.data = {dataset_type: [torch.tensor(arr, dtype=torch.float).unsqueeze(0).expand(3, -1, -1) for arr in data_dict[dataset_type]]}
         elapsed_time = time() - start_time
         print(f"Finished loading {len(cls.data[dataset_type])} images into memory for {dataset_type} in {elapsed_time:.2f} seconds")
 
 
     @staticmethod
-    def read_from_dicom(image_path) -> np.ndarray:
+    def read_from_dicom(image_path, return_numpy: bool = False) -> Union[np.ndarray, torch.Tensor]:
         dcm = pydicom.dcmread(image_path)
         arr = dcm.pixel_array
         max_val = 2 ** dcm.BitsStored - 1
@@ -384,13 +395,17 @@ class MGBCXRDataset(BaseDataset):
         arr_max = arr.max()
         arr = ((arr - arr_min) / (arr_max - arr_min)) * 255
         arr = arr.astype(np.uint8)
-        return arr
+        if return_numpy: 
+            return arr
+        else:
+            im_tensor = torch.tensor(arr)
+            return im_tensor
 
     @staticmethod
     def _cache_image(dicom_path: Path, numpy_path: Path):
         """Create a cached version of a DICOM file."""
         if not numpy_path.exists():
-            arr = MGBCXRDataset.read_from_dicom(dicom_path)
+            arr = MGBCXRDataset.read_from_dicom(dicom_path, return_numpy=True)
             numpy_path.parent.mkdir(exist_ok=True, parents=True)
             np.save(numpy_path, arr)
 

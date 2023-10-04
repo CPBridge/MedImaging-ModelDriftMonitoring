@@ -630,7 +630,7 @@ class MGBCXRDataModule(BaseDatamodule):
         if self.cache_folder is None:
             print(f"There are {len(self.val_dataset.image_paths)} images in the validation dataset")
             self.val_dataset.dataset_type = 'val'
-            self.__dataset_cls__.load_data_into_memory(self.data_folder, self.val_dataset.image_paths, 'val')
+            self.__dataset_cls__.load_data_into_memory(self.data_folder, self.val_dataset.image_paths, 'val', num_workers=self.num_workers)
         
         # For now, test is simply the entire dataset
         self.test = labels_df.merge(
