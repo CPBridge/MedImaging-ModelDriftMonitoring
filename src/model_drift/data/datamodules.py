@@ -604,7 +604,7 @@ class MGBCXRDataModule(BaseDatamodule):
             transform=self.train_transforms,
             **self.train_kwargs,
         )
-        
+        self.train_dataset.dataset_type = 'train' 
         #if self.cache_folder is None:
         #    print(f"There are {len(self.train_dataset.image_paths)} images in the train dataset")
         #    self.train_dataset.dataset_type = 'train'
@@ -627,6 +627,7 @@ class MGBCXRDataModule(BaseDatamodule):
             transform=self.val_transforms,
             **self.val_kwargs,
         )
+        self.val_dataset.dataset_type = 'val'
         #if self.cache_folder is None:
         #    print(f"There are {len(self.val_dataset.image_paths)} images in the validation dataset")
         #    self.val_dataset.dataset_type = 'val'
@@ -644,6 +645,7 @@ class MGBCXRDataModule(BaseDatamodule):
             transform=self.test_transforms,
             **self.test_kwargs,
         )
+        self.val_dataset.dataset_type = 'test'
 
         if self.cache_folder is not None:
             print(f"Creating cache at {self.cache_folder}")

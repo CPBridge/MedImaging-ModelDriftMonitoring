@@ -7,7 +7,7 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=12
 #SBATCH --gpus 1
-#SBATCH --mem=768G
+#SBATCH --mem=256G
 #SBATCH -t 36:00:00
 
 export PYENV_VERSION="med-image-drift"

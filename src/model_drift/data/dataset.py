@@ -328,7 +328,7 @@ class MGBCXRDataset(BaseDataset):
         #hot fix
         dataset_type = None
         #end hotfix
-        dataset_type = self.dataset_type  # Ensure you set this attribute when creating the dataset instance
+        #dataset_type = self.dataset_type  # Ensure you set this attribute when creating the dataset instance
 
         # Check if data is loaded into memory
         if self.data is not None and dataset_type in self.data:
