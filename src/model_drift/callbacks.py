@@ -156,6 +156,33 @@ class VAEPredictionWriter(PredictionWriterBase):
                     os.path.join(self.output_dir, "recon", recon_path),
                 )
 
+class ResNetFeaturePredictionWriter(PredictionWriterBase):
+
+    def __init__(
+            self,
+            output_dir: str,
+            write_recon=False,
+            write_grid=0,
+            write_interval="batch",
+    ):
+        super().__init__(output_dir=output_dir, write_interval=write_interval)
+      
+
+    def write_on_batch_end(self, trainer, pl_module, prediction, batch_indices, batch, batch_idx, dataloader_idx, ):
+        super().write_on_batch_end(trainer, pl_module, prediction, batch_indices, batch, batch_idx, dataloader_idx)
+
+        images, index  = (
+            batch["image"],
+            batch["index"],
+        )
+
+        mu = prediction.cpu().numpy().tolist()
+
+        for idx, m in zip(index, mu):
+            s = json.dumps({"index": idx, "mu": m})
+            with open(self.get_full_pred_name(trainer), "a") as f:
+                print(s, file=f)
+
 
 class ClassifierPredictionWriter(PredictionWriterBase):
 

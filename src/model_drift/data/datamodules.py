@@ -605,10 +605,10 @@ class MGBCXRDataModule(BaseDatamodule):
             **self.train_kwargs,
         )
         
-        if self.cache_folder is None:
-            print(f"There are {len(self.train_dataset.image_paths)} images in the train dataset")
-            self.train_dataset.dataset_type = 'train'
-            self.__dataset_cls__.load_data_into_memory(self.data_folder, self.train_dataset.image_paths, 'train', num_workers=self.num_workers)
+        #if self.cache_folder is None:
+        #    print(f"There are {len(self.train_dataset.image_paths)} images in the train dataset")
+        #    self.train_dataset.dataset_type = 'train'
+        #    self.__dataset_cls__.load_data_into_memory(self.data_folder, self.train_dataset.image_paths, 'train', num_workers=self.num_workers)
             
 
         self.val = val_labels_df.merge(
@@ -627,10 +627,10 @@ class MGBCXRDataModule(BaseDatamodule):
             transform=self.val_transforms,
             **self.val_kwargs,
         )
-        if self.cache_folder is None:
-            print(f"There are {len(self.val_dataset.image_paths)} images in the validation dataset")
-            self.val_dataset.dataset_type = 'val'
-            self.__dataset_cls__.load_data_into_memory(self.data_folder, self.val_dataset.image_paths, 'val', num_workers=self.num_workers)
+        #if self.cache_folder is None:
+        #    print(f"There are {len(self.val_dataset.image_paths)} images in the validation dataset")
+        #    self.val_dataset.dataset_type = 'val'
+        #    self.__dataset_cls__.load_data_into_memory(self.data_folder, self.val_dataset.image_paths, 'val', num_workers=self.num_workers)
         
         # For now, test is simply the entire dataset
         self.test = labels_df.merge(

@@ -18,6 +18,7 @@ from model_drift.drift.config import mgb_default_config
 from model_drift.drift.sampler import Sampler
 from model_drift.drift.performance import ClassificationReportCalculator
 from model_drift import settings, helpers, mgb_locations
+from model_drift.helpers import create_score_based_ood_frame
 from pycrumbs import tracked
 import warnings
 import pandas as pd
@@ -131,6 +132,36 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     sampler = Sampler(args.sample_size, replacement=args.replacement)
 
     ref_df = val_df.copy().assign(in_distro=True)
+
+    # here is the hard data injection
+    target_df = merged_df.set_index('StudyDate')
+    #target_df.index = pd.to_datetime(target_df.index)
+    indistro_data = target_df.copy().assign(in_distro=False)
+
+    targets = {}
+    targets["indistro"] = indistro_data
+
+    if args.bad_q:
+        targets['bad_sample_data'] = create_score_based_ood_frame(indistro_data, label_cols, q=args.bad_q,
+                                                                  sample_start_date=args.bad_sample_start_date,
+                                                                  sample_end_date=args.bad_sample_end_date,
+                                                                  ood_start_date=args.bad_start_date,
+                                                                  ood_end_date=args.bad_end_date, bottom=True
+                                                                  ).assign(in_distro=False)
+
+    if args.good_q:
+        targets['good_sample_data'] = create_score_based_ood_frame(indistro_data, label_cols, q=args.good_q,
+                                                                   sample_start_date=args.good_sample_start_date,
+                                                                   sample_end_date=args.good_sample_end_date,
+                                                                   ood_start_date=args.good_start_date,
+                                                                   ood_end_date=args.good_end_date, bottom=True
+                                                                   ).assign(in_distro=False)
+
+    for name, target in targets.items():
+        target["source"]= name
+    
+    target_df = pd.concat(targets.values(), sort=True)
+    # end of hard data injection code
     dwc = mgb_default_config(ref_df)
 
     dwc.add_drift_stat(
@@ -144,7 +175,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
 
     dwc.prepare(ref_df)
 
-    target_df = merged_df.set_index('StudyDate')
+    #target_df = merged_df.set_index('StudyDate')
 
     ref_df.to_csv(output_dir.joinpath('ref.csv'))
     target_df.to_csv(output_dir.joinpath('target.csv'))

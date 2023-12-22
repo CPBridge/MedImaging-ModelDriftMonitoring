@@ -325,6 +325,9 @@ class MGBCXRDataset(BaseDataset):
     
     #modified to work with reading from memory, 
     def __getitem__(self, index):
+        #hot fix
+        dataset_type = None
+        #end hotfix
         dataset_type = self.dataset_type  # Ensure you set this attribute when creating the dataset instance
 
         # Check if data is loaded into memory
