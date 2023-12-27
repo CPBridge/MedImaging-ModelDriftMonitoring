@@ -115,7 +115,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     vae_df = pd.concat(
         [
             vae_df,
-            pd.DataFrame(vae_df['mu'].values.tolist(), columns=[f"mu.{c:0>3}" for c in range(128)])
+            pd.DataFrame(vae_df['mu'].values.tolist(), columns=[f"mu.{c:0>3}" for c in range(args.num_vae_features)])
         ],
         axis=1
     )
@@ -247,6 +247,7 @@ if __name__ == '__main__':
     parser.add_argument("--start_date", type=str, default=None)
     parser.add_argument("--end_date", type=str, default=None)
 
+    parser.add_argument("--num_vae_features", type=int, default=128)
     args = parser.parse_args()
 
     main(args.output_dir, args)
