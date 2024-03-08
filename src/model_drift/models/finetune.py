@@ -36,7 +36,9 @@ class CheXFinetune(VisionModuleBase):
         self.save_hyperparameters()
 
         model = models.densenet121(pretrained=bool(pretrained))
-        if pretrained:
+        
+        # check if pretrained is not 'imagenet'
+        if pretrained != 'imagenet':
             # Load pre-trained CheXpert model to be fine-tuned
             model.classifier.weight = torch.nn.Parameter(torch.randn(14, 1024))
             model.classifier.bias = torch.nn.Parameter(torch.randn(14))
@@ -60,6 +62,8 @@ class CheXFinetune(VisionModuleBase):
                         break
                 new_state_dict[k] = v
             model.load_state_dict(new_state_dict)
+        else:
+            print("Using imagenet pretrained model")
 
         # Add new last layer for fine-tuning
         num_ftrs = model.classifier.in_features
@@ -169,13 +173,13 @@ class CheXFinetune(VisionModuleBase):
             params=list(filter(lambda p: p.requires_grad, self.parameters())),
             lr=self.learning_rate,
         )
-        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=self.gamma)
-        #lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.learning_rate, steps_per_epoch=200, epochs=60)
+        #lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=self.gamma)
+        lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.learning_rate, steps_per_epoch=200, epochs=60)
+    
+        lr_scheduler_config = {"scheduler":lr_scheduler, "interval":"step", "frequency":1, "strict":True, "name":None}
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
         
-        #lr_scheduler_config = {"scheduler":lr_scheduler, "interval":"step", "frequency":1, "strict":True, "name":None}
-        #return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
-        
-        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+        #return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
         
         
 
