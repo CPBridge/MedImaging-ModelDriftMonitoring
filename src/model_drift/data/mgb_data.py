@@ -29,19 +29,37 @@ RAW_LABELS = [
     'Support Devices',
 ]
 
+#LABEL_GROUPINGS = {
+#    'Atelectasis': ['Atelectasis'],
+#    # 'Cardiomegaly': ['Cardiomegaly'],
+#    'Consolidation': ['Consolidation', 'Pneumonia'], # take that out
+#    'Edema': ['Edema'],
+#    'Lung Lesion': ['Lung Lesion'],
+#    # 'No Finding': ['No Finding'],
+#    'Lung Opacity': ['Lung Opacity', 'Pneumonia', 'Consolidation', 'Lung Lesion', 'Atelectasis', 'Edema'],
+#    # 'Pleural Other': ['Pleural Other', 'Pleural Effusion', 'Pneumothorax'], #take that out
+#    'Pleural Effusion': ['Pleural Effusion'],
+#    'Pneumonia': ['Pneumonia'],
+#    'Pneumothorax': ['Pneumothorax'],
+#    # 'Support Devices': ['Support Devices'],
+#    # 'Enlarged Cardiomediastinum': ['Enlarged Cardiomediastinum', 'Cardiomegaly'],
+#    # 'Fracture': ['Fracture'],
+#}
+
+# new label grouping to include all the labels, should be used for next training
 LABEL_GROUPINGS = {
     'Atelectasis': ['Atelectasis'],
-    # 'Cardiomegaly': ['Cardiomegaly'],
-    'Consolidation': ['Consolidation', 'Pneumonia'],
+    'Cardiomegaly': ['Cardiomegaly'],
+    'Consolidation': ['Consolidation'],
     'Edema': ['Edema'],
     'Lung Lesion': ['Lung Lesion'],
     # 'No Finding': ['No Finding'],
     'Lung Opacity': ['Lung Opacity', 'Pneumonia', 'Consolidation', 'Lung Lesion', 'Atelectasis', 'Edema'],
-    # 'Pleural Other': ['Pleural Other', 'Pleural Effusion', 'Pneumothorax'],
+    'Pleural Other': ['Pleural Other'],
     'Pleural Effusion': ['Pleural Effusion'],
     'Pneumonia': ['Pneumonia'],
     'Pneumothorax': ['Pneumothorax'],
-    # 'Support Devices': ['Support Devices'],
-    # 'Enlarged Cardiomediastinum': ['Enlarged Cardiomediastinum', 'Cardiomegaly'],
-    # 'Fracture': ['Fracture'],
+    'Support Devices': ['Support Devices'],
+    'Enlarged Cardiomediastinum': ['Enlarged Cardiomediastinum', 'Cardiomegaly'],
+    'Fracture': ['Fracture'],
 }

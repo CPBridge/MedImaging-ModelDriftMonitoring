@@ -645,7 +645,7 @@ class MGBCXRDataModule(BaseDatamodule):
             transform=self.test_transforms,
             **self.test_kwargs,
         )
-        self.val_dataset.dataset_type = 'test'
+        self.test_dataset.dataset_type = 'test'
 
         if self.cache_folder is not None:
             print(f"Creating cache at {self.cache_folder}")

@@ -19,6 +19,7 @@ import pydicom
 from torch.utils.data import Dataset
 
 from model_drift.data import mgb_data
+from tqdm import tqdm
 
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -420,13 +421,23 @@ class MGBCXRDataset(BaseDataset):
             cache_dir / (str(image_path.relative_to(self.folder_dir)) + ".npy")
             for image_path in self.image_paths
         ]
+        print("Number of image paths: ", len(self.image_paths))
+
+        # FD: fix to check all the paths:
+        
+        #print("Verifying cache...")
+        #args = [(impath, cachepath) for impath, cachepath in tqdm(zip(self.image_paths, cache_paths), total=len(cache_paths)) if not cachepath.exists()]
+
         if not cache_paths[0].exists():
             args = zip(self.image_paths, cache_paths)
+        #if args:  # Check if there are any items to process
+            print(f"Creating cache for {len(args)} images")
             if num_workers > 0:
                 with mp.Pool(num_workers) as p:
                     p.starmap(MGBCXRDataset._cache_image, args)
             else:
                 for impath, cachepath in args:
                     MGBCXRDataset._cache_image(impath, cachepath)
+        print("Cache verified and created for all images in dataset")
         self.image_paths = cache_paths
         self.has_cache = True
