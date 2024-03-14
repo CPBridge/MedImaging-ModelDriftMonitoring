@@ -261,7 +261,6 @@ class MIDRCDataset(BaseDataset):
 
 class MGBCXRDataset(BaseDataset):
     LABEL_COLUMNS = list(mgb_data.LABEL_GROUPINGS.keys())
-    data = {}  # Class variable to store data in memory
 
     def prepare_data(self):
         self.has_cache = False
@@ -298,98 +297,20 @@ class MGBCXRDataset(BaseDataset):
             self.image_index.append(image_id)
             self.recon_image_path.append(image_id + '.png')
 
-    
     def read_image(self, image_path) -> Image:
         """Read an image from the path."""
         if hasattr(self, "has_cache") and self.has_cache:
             # Read in cached version as npy
             arr = np.load(image_path)
-            im = torch.tensor(arr)
         else:
             # Read in from raw DICOM
-            im = self.read_from_dicom(image_path)
-        #im = Image.fromarray(arr)
-        #im = im.convert("RGB")
+            arr = self.read_from_dicom(image_path)
+        im = Image.fromarray(arr)
+        im = im.convert("RGB")
         return im
 
-    #@staticmethod
-    #def read_image(image_path) -> Image:
-    #    """Read an image from the path."""
-    #    
-    #    # Read in from raw DICOM
-    #    arr = self.read_from_dicom(image_path)
-    #    im = Image.fromarray(arr)
-    #    im = im.convert("RGB")
-    #    return im
-
-
-    
-    #modified to work with reading from memory, 
-    def __getitem__(self, index):
-        #hot fix
-        dataset_type = None
-        #end hotfix
-        #dataset_type = self.dataset_type  # Ensure you set this attribute when creating the dataset instance
-
-        # Check if data is loaded into memory
-        if self.data is not None and dataset_type in self.data:
-            image_data_original = self.data[dataset_type][index]
-            #image_data_original = Image.fromarray(image_data_original_ram)
-            #image_data_original = image_data_original.convert("RGB")
-        else:
-            image_path = self.image_paths[index]
-            image_data_original = self.read_image(image_path)
-
-        if len(image_data_original.shape) == 2:
-            image_data_original = image_data_original.unsqueeze(0).expand(3, -1, -1)
-
-        
-        image_data_original = image_data_original.float()
-        image_data = self.image_transformation(image_data_original)
-        
-        onp = image_data_original
-
-        return {
-            "image": image_data,
-            "label": torch.FloatTensor(self.image_labels[index]),
-            "frontal": torch.FloatTensor([self.frontal[index]]),
-            "index": self.image_index[index],
-            "recon_path": self.recon_image_path[index],
-            # "o_mean": torch.tensor([onp.mean()], dtype=torch.float),
-            # "o_max": torch.tensor([onp.max()], dtype=torch.float),
-            # "o_min": torch.tensor([onp.min()], dtype=torch.float),
-            "o_mean": onp.mean(), 
-            "o_max": onp.max(), 
-            "o_min": onp.min(), 
-        }
-        
-
     @staticmethod
-    def read_and_store_image(cls, image_path, dataset_type, data_dict):
-        image = cls.read_from_dicom(image_path, return_numpy=True)
-        data_dict[dataset_type].append(image)
-    
-    @classmethod
-    def load_data_into_memory(cls, folder_dir, image_paths, dataset_type, num_workers=0):
-        start_time = time()
-        print(f"Started loading {dataset_type} images into memory")
-        with mp.Manager() as manager:
-            data_dict = manager.dict()
-            data_dict[dataset_type] = manager.list()  
-            args = [(cls, path, dataset_type, data_dict) for path in image_paths]
-            if num_workers > 0:
-                with mp.Pool(num_workers) as p:
-                    p.starmap(cls.read_and_store_image, args)
-            else:
-                for arg in args:
-                    cls.read_and_store_image(*arg)
-            cls.data = {dataset_type: [torch.tensor(arr, dtype=torch.float).unsqueeze(0).expand(3, -1, -1) for arr in data_dict[dataset_type]]}
-        elapsed_time = time() - start_time
-        print(f"Finished loading {len(cls.data[dataset_type])} images into memory for {dataset_type} in {elapsed_time:.2f} seconds")
-
-
-    @staticmethod
-    def read_from_dicom(image_path, return_numpy: bool = False) -> Union[np.ndarray, torch.Tensor]:
+    def read_from_dicom(image_path) -> np.ndarray:
         dcm = pydicom.dcmread(image_path)
         arr = dcm.pixel_array
         max_val = 2 ** dcm.BitsStored - 1
@@ -399,17 +320,13 @@ class MGBCXRDataset(BaseDataset):
         arr_max = arr.max()
         arr = ((arr - arr_min) / (arr_max - arr_min)) * 255
         arr = arr.astype(np.uint8)
-        if return_numpy: 
-            return arr
-        else:
-            im_tensor = torch.tensor(arr)
-            return im_tensor
+        return arr
 
     @staticmethod
     def _cache_image(dicom_path: Path, numpy_path: Path):
         """Create a cached version of a DICOM file."""
         if not numpy_path.exists():
-            arr = MGBCXRDataset.read_from_dicom(dicom_path, return_numpy=True)
+            arr = MGBCXRDataset.read_from_dicom(dicom_path)
             numpy_path.parent.mkdir(exist_ok=True, parents=True)
             np.save(numpy_path, arr)
 
@@ -421,23 +338,13 @@ class MGBCXRDataset(BaseDataset):
             cache_dir / (str(image_path.relative_to(self.folder_dir)) + ".npy")
             for image_path in self.image_paths
         ]
-        print("Number of image paths: ", len(self.image_paths))
-
-        # FD: fix to check all the paths:
-        
-        #print("Verifying cache...")
-        #args = [(impath, cachepath) for impath, cachepath in tqdm(zip(self.image_paths, cache_paths), total=len(cache_paths)) if not cachepath.exists()]
-
         if not cache_paths[0].exists():
             args = zip(self.image_paths, cache_paths)
-        #if args:  # Check if there are any items to process
-            print(f"Creating cache for {len(args)} images")
             if num_workers > 0:
                 with mp.Pool(num_workers) as p:
                     p.starmap(MGBCXRDataset._cache_image, args)
             else:
                 for impath, cachepath in args:
                     MGBCXRDataset._cache_image(impath, cachepath)
-        print("Cache verified and created for all images in dataset")
         self.image_paths = cache_paths
         self.has_cache = True
