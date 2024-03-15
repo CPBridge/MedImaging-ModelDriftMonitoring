@@ -90,7 +90,9 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
 
     transformer = VisionTransformer.from_argparse_args(args)
     # dm = PadChestDataModule.from_argparse_args(args, transforms=transformer.train_transform)
-    dm = MGBCXRDataModule.from_argparse_args(args, transforms=transformer.train_transform)
+    dm = MGBCXRDataModule.from_argparse_args(args, train_transforms=transformer.train_transform, 
+                                             val_transforms=transformer.val_transform,
+                                             test_transforms=transformer.val_transform)
     args.num_classes = len(LABEL_GROUPINGS)
     params = vars(args)
     model = CheXFinetune.from_argparse_args(args, labels=dm.labels, params=params)

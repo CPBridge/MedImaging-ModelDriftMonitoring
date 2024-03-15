@@ -16,10 +16,10 @@ class CheXFinetune(VisionModuleBase):
     def __init__(
             self,
             pretrained=None,
-            num_classes=10,
+            num_classes=13,
             learning_rate=0.001,
             step_size=7,
-            gamma=0.1,
+            gamma=1,
             freeze_backbone=False,
             labels=None,
             params=None,
@@ -33,7 +33,9 @@ class CheXFinetune(VisionModuleBase):
 
         self.save_hyperparameters()
 
-        model = models.densenet121(pretrained=bool(pretrained))
+        #model = models.densenet121(pretrained=bool(pretrained))
+        model = models.densenet121(weights=models.DenseNet121_Weights.DEFAULT)
+
         if pretrained:
             # Load pre-trained CheXpert model to be fine-tuned
             model.classifier.weight = torch.nn.Parameter(torch.randn(14, 1024))
@@ -71,7 +73,7 @@ class CheXFinetune(VisionModuleBase):
                 # Accuracy(num_classes=num_classes, average='none'),
                 # Recall(num_classes=num_classes, average="none"),
                 # Specificity(num_classes=num_classes, average="none"),
-                AUROC(num_classes=num_classes, average=None, compute_on_step=False),
+                AUROC(num_classes=num_classes, average=None, compute_on_step=True), #changed to True
             ],
             prefix="val/",
         )
@@ -176,10 +178,10 @@ class CheXFinetune(VisionModuleBase):
         group.add_argument(
             "--learning_rate", type=float, dest="learning_rate", help="base learning rate", default=1e-3, )
         group.add_argument(
-            "--freeze_backbone", type=int, dest="freeze_backbone", help="freeze_backbone", default=0, )
+            "--freeze_backbone", type=int, dest="freeze_backbone", help="freeze_backbone", default=0)
         group.add_argument(
             "--weight_decay", type=float, dest="weight_decay", help="weight decay for optimizer", default=1e-5, )
-        group.add_argument("--gamma", type=float, dest="gamma", default=0.1,
+        group.add_argument("--gamma", type=float, dest="gamma", default=1,
                            help="reduction factor for lr scheduler"
                                 "if reduce on plateau is used, this value is used for 'factor'")
         group.add_argument("--step_size", type=int, dest="step_size",
