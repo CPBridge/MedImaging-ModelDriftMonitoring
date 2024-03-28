@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 
-#SBATCH -o /homes/5/fd881/slurm_log/classification_imagenet_nogamma_augmentation-%j.out
+#SBATCH -o /homes/5/fd881/slurm_log/classification_imagenet_monaitransform_onlyer-%j.out
 #SBATCH -J med-image-drift-finetune
-#SBATCH -p rtx8000
+#SBATCH -p pubgpu,rtx8000
 #SBATCH -A qtim
 #SBATCH -n 1
 #SBATCH --cpus-per-task=16
 #SBATCH --gpus 1
+#SBATCH --mem 128G
 #SBATCH -t 36:00:00
+
 
 export PYENV_VERSION="med-image-drift"
 export PYTHONPATH="${HOME}/repos/MedImaging-ModelDriftMonitoring/src":${PYTHONPATH}
@@ -16,10 +18,11 @@ python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/train.
     --frontal_only 1 \
     --batch_size 64 \
     --freeze_backbone 0 \
+    --random_augmentation True \
     --cache_folder /vast/qtim/projects/xray-drift/numpy_cache/ \
     --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
-    --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_nogamma_augmentation \
-    --default_root_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_nogamma_augmentation \
+    --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_monaitransform_onlyer \
+    --default_root_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_monaitransform_onlyer \
     --num_workers 16 \
     --max_epochs 60 \
     --learning_rate 1e-3 \

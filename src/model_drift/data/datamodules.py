@@ -571,6 +571,55 @@ class MGBCXRDataModule(BaseDatamodule):
             index_col=0,
         )
 
+        # START OF FELIX CHANGE
+        # Also load crosswalk and reports for more information
+        #get accesion number from here
+        crosswalk = pd.read_csv(mgb_locations.crosswalk_csv, dtype={"ANON_AccNumber": int})
+        crosswalk = crosswalk[["ANON_AccNumber", "ORIG_AccNumber"]]
+
+        # get other metadata from here
+        reports = pd.read_csv(mgb_locations.reports_csv, dtype=str)
+        reports = reports[
+            [
+                "Accession Number",
+                "Point of Care",
+                "Patient Sex",
+                "Patient Age",
+                "Is Stat",
+                "Exam Code",
+            ]
+        ].copy()
+
+        reports = reports.merge(
+            crosswalk,
+            how="left",
+            left_on="Accession Number",
+            right_on="ORIG_AccNumber",
+            validate="many_to_one",
+        )
+        reports.drop(columns=["ORIG_AccNumber", "Accession Number"], inplace=True)
+        #convert ANONaccnumer to int
+        reports.rename(columns={"ANON_AccNumber": "AccessionNumber"}, inplace=True)
+
+        #drop rows with na in accesionnumber column
+        reports = reports[reports["AccessionNumber"].notna()]
+        reports["AccessionNumber"]= reports["AccessionNumber"].astype(int).astype(str)
+
+        # Strip 0s from IDs so that they match between dataframes
+        dcm_df['PatientID'] = dcm_df.PatientID.str.lstrip('0')
+        dcm_df['AccessionNumber'] = dcm_df.AccessionNumber.str.lstrip('0')
+
+        # Merge reports with dcm_df
+        dcm_df = dcm_df.merge(
+            reports,
+            how="left",
+            on="AccessionNumber",
+            validate="many_to_many",
+        )
+
+        # END OF FELIX CHANGE
+
+
         # Strip 0s from IDs so that they match between dataframes
         dcm_df['PatientID'] = dcm_df.PatientID.str.lstrip('0')
         dcm_df['AccessionNumber'] = dcm_df.AccessionNumber.str.lstrip('0')
@@ -584,6 +633,9 @@ class MGBCXRDataModule(BaseDatamodule):
             dcm_df.PhotometricInterpretation.isin(self.ALLOWABLE_PIS)
         ].copy()
 
+        # Addition: only train on MGH IMG XR ER MG WHT1 images
+        dcm_df["is_er"] = dcm_df['Point of Care'].str.contains("MGH IMG XR ER MG WHT1")
+
         self.train = train_labels_df.merge(
             dcm_df,
             how='inner',
@@ -591,6 +643,11 @@ class MGBCXRDataModule(BaseDatamodule):
         )
         if self.train_kwargs["frontal_only"]:
             self.train = self.train[self.train.is_frontal].copy()
+
+        #HOTFIX: should later be a kwarg
+        if True:
+            self.train = self.train[self.train.is_er].copy()
+
         self.train_dataset = self.__dataset_cls__(
             self.data_folder,
             self.train,
@@ -605,6 +662,11 @@ class MGBCXRDataModule(BaseDatamodule):
         )
         if self.val_kwargs["frontal_only"]:
             self.val = self.val[self.val.is_frontal].copy()
+
+        #HOTFIX: should later be a kwarg
+        if True:
+            self.val = self.val[self.val.is_er].copy()
+
         self.val_dataset = self.__dataset_cls__(
             self.data_folder,
             self.val,

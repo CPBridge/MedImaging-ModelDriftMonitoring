@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+#SBATCH -o /homes/5/fd881/slurm_log/med-image-drift-scoring_er-%j.out
+#SBATCH -J med-image-drift-scoring
+#SBATCH -p pubgpu,rtx8000
+#SBATCH -A qtim
+#SBATCH -n 1
+#SBATCH --cpus-per-task=8
+#SBATCH --gpus 1
+#SBATCH --mem 64G
+#SBATCH -t 18:00:00
+
+export PYENV_VERSION="med-image-drift"
+export PYTHONPATH="${HOME}/repos/MedImaging-ModelDriftMonitoring/src":${PYTHONPATH}
+
+python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/score.py \
+    --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
+    --cache_folder /vast/qtim/projects/xray-drift/numpy_cache/ \
+    --model '/autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_monaitransform_onlyer/checkpoints/epoch=020.ckpt' \
+    --dataset mgb \
+    --output_dir /autofs/cluster/qtim/projects/xray_drift/inferences/classification_imagenet_monaitransform_onlyer \
+    --num_workers 8 \

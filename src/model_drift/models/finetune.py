@@ -36,6 +36,7 @@ class CheXFinetune(VisionModuleBase):
         #model = models.densenet121(pretrained=bool(pretrained))
         model = models.densenet121(weights=models.DenseNet121_Weights.DEFAULT)
 
+
         if pretrained:
             # Load pre-trained CheXpert model to be fine-tuned
             model.classifier.weight = torch.nn.Parameter(torch.randn(14, 1024))
@@ -65,6 +66,14 @@ class CheXFinetune(VisionModuleBase):
         num_ftrs = model.classifier.in_features
         self.backbone = model
         self.backbone.classifier = nn.Linear(num_ftrs, num_classes)
+        #self.backbone.classifier = nn.Sequential(
+        #    nn.Linear(num_ftrs, num_ftrs//2),
+        #    nn.ReLU(),
+        #    nn.BatchNorm1d(num_ftrs//2),
+        #    nn.Dropout(0.1),
+        #    nn.Linear(num_ftrs//2, num_classes),
+        #)
+
         self.activation = nn.Sigmoid()
         self.criterion = nn.BCELoss()
 
@@ -160,9 +169,27 @@ class CheXFinetune(VisionModuleBase):
         optimizer = torch.optim.Adam(
             params=list(filter(lambda p: p.requires_grad, self.parameters())),
             lr=self.learning_rate,
+            weight_decay=0.0001,
         )
         lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=self.gamma)
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+    
+        #scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        #    optimizer,
+        #    max_lr=self.learning_rate,
+        #    #total_steps=15360,
+        #    steps_per_epoch = 480, 
+        #    epochs = 30,
+        #    )
+        #lr_scheduler_config = {
+        #    "scheduler": scheduler,
+        #    "interval": "step",
+        #    "frequency": 1,
+        #    "monitor": "val/AUROC.mean",
+        #    "strict": True,
+        #    "name": None,
+        #}
+        #return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
 
     @classmethod
     def add_model_args(cls, parser):
