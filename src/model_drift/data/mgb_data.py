@@ -28,7 +28,7 @@ LABEL_GROUPINGS = {
     'Cardiomegaly': ['Cardiomegaly'],
     'Consolidation': ['Consolidation'],
     'Edema': ['Edema'],
-    'Lung Lesion': ['Lung Lesion'],
+    #'Lung Lesion': ['Lung Lesion'],
     # 'No Finding': ['No Finding'],
     'Lung Opacity': ['Lung Opacity', 'Pneumonia', 'Consolidation', 'Lung Lesion', 'Atelectasis', 'Edema'],
     'Pleural Other': ['Pleural Other'],
@@ -37,5 +37,5 @@ LABEL_GROUPINGS = {
     'Pneumothorax': ['Pneumothorax'],
     'Support Devices': ['Support Devices'],
     'Enlarged Cardiomediastinum': ['Enlarged Cardiomediastinum', 'Cardiomegaly'],
-    'Fracture': ['Fracture'],
+    #'Fracture': ['Fracture'],
 }

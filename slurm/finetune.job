@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#SBATCH -o /homes/5/fd881/slurm_log/classification_imagenet_monaitransform_onlyer-%j.out
+#SBATCH -o /homes/5/fd881/slurm_log/classification_imagenet_monaitransform_onlyer_cardio-%j.out
 #SBATCH -J med-image-drift-finetune
 #SBATCH -p pubgpu,rtx8000
 #SBATCH -A qtim
@@ -10,7 +10,6 @@
 #SBATCH --mem 128G
 #SBATCH -t 36:00:00
 
-
 export PYENV_VERSION="med-image-drift"
 export PYTHONPATH="${HOME}/repos/MedImaging-ModelDriftMonitoring/src":${PYTHONPATH}
 
@@ -19,11 +18,11 @@ python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/train.
     --batch_size 64 \
     --freeze_backbone 0 \
     --random_augmentation True \
-    --cache_folder /vast/qtim/projects/xray-drift/numpy_cache/ \
     --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
-    --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_monaitransform_onlyer \
-    --default_root_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_monaitransform_onlyer \
+    --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_monaitransform_onlyer_cardio \
+    --default_root_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_monaitransform_onlyer_cardio \
     --num_workers 16 \
     --max_epochs 60 \
-    --learning_rate 1e-3 \
+    --learning_rate 5e-3 \
+    --cache_folder /vast/qtim/projects/xray-drift/numpy_cache/ \
     #--pretrained '/autofs/cluster/qtim/projects/xray_drift/models/epoch=4-step=29844.ckpt'

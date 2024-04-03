@@ -6,7 +6,7 @@ import warnings
 
 from pytorch_lightning.utilities.argparse import from_argparse_args
 from torchvision import transforms
-from monai.transforms import RandGaussianNoise, RandShiftIntensity, RandCoarseDropout, RandRotate, RandZoom, RandAffine
+from monai.transforms import RandSpatialCrop, RandCoarseDropout, RandRotate, RandZoom, RandAffine, RandGaussianSmooth, HistogramNormalize, RandFlip, SpatialPad
 
 
 class Transformer(object):
@@ -41,6 +41,7 @@ class VisionTransformer(Transformer):
             image_transformation.append(transforms.Grayscale(num_output_channels=self.channels))
         image_transformation.append(transforms.ToTensor())
         image_transformation += self.normalization
+        image_transformation.append(HistogramNormalize())
 
         if self.random_augmentation:
             #image_transformation += [
@@ -50,12 +51,14 @@ class VisionTransformer(Transformer):
             #    transforms.ColorJitter(brightness=0.2, contrast=0.2),  # Random lighting and contrast adjustments
             #]
             image_transformation += [
-                RandRotate(prob=0.5, range_x=0.175),
+                RandRotate(prob=0.5, range_x=0.250),
+                RandFlip(prob=0.5, spatial_axis=[0,1]),
                 RandZoom(prob=0.5, min_zoom=0.9, max_zoom=1.1, padding_mode="constant"),
-                RandAffine(prob=0.5, shear_range=(0.1, 0.1), padding_mode="zeros"),
-                #RandGaussianNoise(prob=0.5, mean=0.0, std=0.1),
-                #RandShiftIntensity(prob=0.5, offsets=0.1),
+                RandAffine(prob=0.5, shear_range=(0.2, 0.2), padding_mode="zeros"),
                 RandCoarseDropout(prob=0.5, holes=8, spatial_size=16),
+                RandGaussianSmooth(prob=0.5, sigma_x=(0.25, 0.75), sigma_y=(0.25, 0.75)),
+                RandSpatialCrop(roi_size=(240, 240), random_center=True),
+                SpatialPad((320, 320), mode="constant"),
             ]
         return transforms.Compose(image_transformation)
 
@@ -69,11 +72,12 @@ class VisionTransformer(Transformer):
             image_transformation.append(transforms.Grayscale(num_output_channels=self.channels))
         image_transformation.append(transforms.ToTensor())
         image_transformation += self.normalization
+        image_transformation.append(HistogramNormalize())
         return transforms.Compose(image_transformation)
 
     @property
     def infer_transform(self):
-        return self.train_transform
+        return self.val_transform
 
     @classmethod
     def add_argparse_args(cls, parser):

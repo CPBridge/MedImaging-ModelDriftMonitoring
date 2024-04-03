@@ -94,7 +94,7 @@ def score(output_dir: str, args):
     transformer = VisionTransformer.from_argparse_args(Namespace(), **model.hparams.params)
 
     dm_cls = data_modules[args.dataset]
-    dm = dm_cls.from_argparse_args(args, transforms=transformer.train_transform)
+    dm = dm_cls.from_argparse_args(args, transforms=transformer.val_transform)
     writer = ClassifierPredictionWriter(args.output_dir)
 
     if args.num_workers < 0:
