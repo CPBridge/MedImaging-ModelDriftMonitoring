@@ -48,6 +48,42 @@ class KSDriftCalculator(NumericBaseDriftCalculator):
         return kolmogi(q) * np.sqrt((n1 + n2) / (n1 * n2))
 
 
+class KSDriftCalculatorFlapJack(NumericBaseDriftCalculator):
+    name = "ks_flapjack"
+
+    def __init__(self, q_val=0.1, alternative='two-sided', mode='asymp', average='macro', include_critical_value=False,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.q_val = q_val
+        self.alternative = alternative
+        self.mode = mode
+        self.average = average
+        self.include_critical_value = include_critical_value
+
+    def _predict(self, sample):
+        nref = len(self._ref)
+        nobs = len(sample)
+
+        ref1 = np.random.choice(self._ref, nobs)
+        ref2 = np.random.choice(self._ref, nobs)
+        out = {}
+        try:
+            dist1, _ = ks_2samp(ref1, sample, alternative=self.alternative, mode=self.mode)
+            dist2, _  = ks_2samp(ref1, ref2, alternative=self.alternative, mode=self.mode)
+
+            out["distance"] = max(dist1 - dist2, 0.0)
+            out['pval'] = float("NaN")
+
+        except TypeError:
+            out["distance"], out['pval'] = float("NaN"), float("NaN")
+
+        if self.include_critical_value:
+            raise NotImplementedError("Critical value not implemented for flapjack")
+ 
+        return out
+
+
+
 class BasicDriftCalculator(NumericBaseDriftCalculator):
     name = "stats"
 

@@ -15,7 +15,7 @@ from model_drift.data.dataset import MGBCXRDataset
 from model_drift.data.utils import split_on_date
 from model_drift.data import mgb_data
 from model_drift.drift.config import mgb_default_config
-from model_drift.drift.sampler import Sampler
+from model_drift.drift.sampler import Sampler, DummySampler
 from model_drift.drift.performance import ClassificationReportCalculator
 from model_drift import settings, helpers, mgb_locations
 from model_drift.helpers import create_score_based_ood_frame
@@ -115,7 +115,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     vae_df = pd.concat(
         [
             vae_df,
-            pd.DataFrame(vae_df['mu'].values.tolist(), columns=[f"mu.{c:0>3}" for c in range(128)])
+            pd.DataFrame(vae_df['mu'].values.tolist(), columns=[f"mu.{c:0>3}" for c in range(args.num_vae_features)])
         ],
         axis=1
     )
@@ -130,6 +130,8 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     )
 
     sampler = Sampler(args.sample_size, replacement=args.replacement)
+    sampler = DummySampler(args.sample_size, replacement=args.replacement)
+
 
     ref_df = val_df.copy().assign(in_distro=True)
 
@@ -192,6 +194,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
         backend="threading",
         refresh_rate=.01,
         output_dir=output_dir,
+        agg = ('min', 'max', 'mean', 'std', 'median')
     )
     output.to_csv(fname)
 
@@ -247,6 +250,7 @@ if __name__ == '__main__':
     parser.add_argument("--start_date", type=str, default=None)
     parser.add_argument("--end_date", type=str, default=None)
 
+    parser.add_argument("--num_vae_features", type=int, default=128)
     args = parser.parse_args()
 
     main(args.output_dir, args)
