@@ -132,7 +132,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
         col="StudyDate",
     )
 
-    sampler = Sampler(args.sample_size, replacement=args.replacement)
+    #sampler = Sampler(args.sample_size, replacement=args.replacement)
     sampler = DummySampler(args.sample_size, replacement=args.replacement)
 
 
@@ -169,14 +169,14 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     # end of hard data injection code
     dwc = mgb_default_config(ref_df, vae_cols=r"^full_mu$")
 
-    #dwc.add_drift_stat(
-    #    'performance',
-    #    ClassificationReportCalculator(
-    #        target_names=tuple(mgb_data.LABEL_GROUPINGS)
-    #    ),
-    #    col=("score", "label"),
-    #    include_stat_name=False
-    #)
+    dwc.add_drift_stat(
+        'performance',
+        ClassificationReportCalculator(
+            target_names=tuple(mgb_data.LABEL_GROUPINGS)
+        ),
+        col=("score", "label"),
+        include_stat_name=False
+    )
 
     dwc.prepare(ref_df)
 

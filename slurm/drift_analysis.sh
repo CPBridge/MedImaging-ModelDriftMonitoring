@@ -15,7 +15,7 @@ export PYTHONPATH="${HOME}/repos/MedImaging-ModelDriftMonitoring/src":${PYTHONPA
 python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/drift/generate-drift-csv-mgb.py \
     -v /autofs/cluster/qtim/projects/xray_drift/inferences/mgb_with_chexpert_model_vae_take2 \
     -i /autofs/cluster/qtim/projects/xray_drift/inferences/mgb_data_from_chexpert_retrain_frontal_only_lr1e-4_frozen_step25_qwen_labels_correct \
-    -o /autofs/cluster/qtim/projects/xray_drift/drift_analyses/emd_flapjack \
+    -o /autofs/cluster/qtim/projects/xray_drift/drift_analyses/all_flapjack \
     #--bad_q 0.25 \
     #--bad_start_date "2019-10-01" \
     #--bad_end_date "2020-01-01" \
