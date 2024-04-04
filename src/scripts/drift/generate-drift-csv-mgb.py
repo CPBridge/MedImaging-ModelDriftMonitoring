@@ -121,6 +121,9 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     )
     vae_df.drop_duplicates(subset="index", inplace=True)
 
+    # rename the mu column to full_mu, to ensure avoid confusion when regex matching
+    vae_df['full_mu'] = vae_df['mu']
+
     merged_df = scores_df.merge(vae_df, on="index", how="left")
     merged_df = merged_df.merge(meta_df, on="index", how="left")
     train_df, val_df, test_df = split_on_date(
@@ -164,16 +167,16 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     
     target_df = pd.concat(targets.values(), sort=True)
     # end of hard data injection code
-    dwc = mgb_default_config(ref_df)
+    dwc = mgb_default_config(ref_df, vae_cols=r"^full_mu$")
 
-    dwc.add_drift_stat(
-        'performance',
-        ClassificationReportCalculator(
-            target_names=tuple(mgb_data.LABEL_GROUPINGS)
-        ),
-        col=("score", "label"),
-        include_stat_name=False
-    )
+    #dwc.add_drift_stat(
+    #    'performance',
+    #    ClassificationReportCalculator(
+    #        target_names=tuple(mgb_data.LABEL_GROUPINGS)
+    #    ),
+    #    col=("score", "label"),
+    #    include_stat_name=False
+    #)
 
     dwc.prepare(ref_df)
 
@@ -183,6 +186,10 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     target_df.to_csv(output_dir.joinpath('target.csv'))
 
     print("starting drift experiment!")
+
+    print("Currently all warnings are being supressed, this is not safe!")
+    warnings.filterwarnings("ignore")
+
     output = dwc.rolling_window_predict(
         target_df,
         sampler=sampler,
@@ -232,7 +239,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--generate_name", type=int, default=0)
 
-    parser.add_argument("--num_workers", type=int, default=-1)
+    parser.add_argument("--num_workers", type=int, default=16)
     parser.add_argument("--dbg", type=int, default=0)
 
     parser.add_argument("--bad_q", type=float, default=0)

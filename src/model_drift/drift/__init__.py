@@ -6,7 +6,7 @@ from .base import BaseDriftCalculator  # noqa
 from .categorical import ChiSqDriftCalculator  # noqa
 from .histogram import HistIntersectionCalculator, KdeHistPlotCalculator # noqa
 from .collection import DriftCollectionCalculator # noqa
-from .numeric import KSDriftCalculator, BasicDriftCalculator, KSDriftCalculatorFlapJack  # noqa
+from .numeric import KSDriftCalculator, BasicDriftCalculator, KSDriftCalculatorFlapJack, EMDDriftCalculatorFlapJack  # noqa
 from .performance import AUROCCalculator, ClassificationReportCalculator  # noqa
 from .sampler import Sampler  # noqa
 from .tabular import TabularDriftCalculator  # noqa
