@@ -126,6 +126,11 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
 
     merged_df = scores_df.merge(vae_df, on="index", how="left")
     merged_df = merged_df.merge(meta_df, on="index", how="left")
+
+    # option to only evaluate drift on single location
+    if args.point_of_care:
+        merged_df = merged_df[merged_df["Point of Care"] == args.point_of_care].copy()
+    
     train_df, val_df, test_df = split_on_date(
         merged_df,
         [mgb_data.TRAIN_DATE_END, mgb_data.VAL_DATE_END],
@@ -258,6 +263,8 @@ if __name__ == '__main__':
     parser.add_argument("--end_date", type=str, default=None)
 
     parser.add_argument("--num_vae_features", type=int, default=128)
+    parser.add_argument("--point_of_care", type=str, default=None)
+
     args = parser.parse_args()
 
     main(args.output_dir, args)
