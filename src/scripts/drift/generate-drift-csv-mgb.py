@@ -244,7 +244,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--generate_name", type=int, default=0)
 
-    parser.add_argument("--num_workers", type=int, default=16)
+    parser.add_argument("--num_workers", type=int, default=-1)
     parser.add_argument("--dbg", type=int, default=0)
 
     parser.add_argument("--bad_q", type=float, default=0)
