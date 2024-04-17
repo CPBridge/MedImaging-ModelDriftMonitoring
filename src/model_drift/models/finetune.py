@@ -16,7 +16,7 @@ class CheXFinetune(VisionModuleBase):
     def __init__(
             self,
             pretrained=None,
-            num_classes=1,
+            num_classes=10,
             learning_rate=0.001,
             step_size=7,
             gamma=1,
@@ -33,7 +33,6 @@ class CheXFinetune(VisionModuleBase):
 
         self.save_hyperparameters()
 
-        #model = models.densenet121(pretrained=bool(pretrained))
         model = models.densenet121(weights=models.DenseNet121_Weights.DEFAULT)
 
 
@@ -66,47 +65,6 @@ class CheXFinetune(VisionModuleBase):
         num_ftrs = model.classifier.in_features
         self.backbone = model
         self.backbone.classifier = nn.Linear(num_ftrs, num_classes)
-        #self.backbone.classifier = nn.Sequential(
-        #    nn.Linear(num_ftrs, num_ftrs//2),
-        #    nn.ReLU(),
-        #    nn.BatchNorm1d(num_ftrs//2),
-        #    nn.Dropout(0.1),
-        #    nn.Linear(num_ftrs//2, num_classes),
-        #)
-
-        # HERE LEARNING RATE STUFF
-        layer_names = []
-
-        # Populate layer names from the model's named parameters
-        for _idx, (name, _param) in enumerate(self.backbone.named_parameters()):
-            layer_names.append(name)
-        layer_names.reverse()
-        lr = self.learning_rate
-        lr_mult = 0.9
-
-        parameters = []
-        prev_group_name = layer_names[0].split(".")[0]
-
-        # Loop through layer names to update learning rates and collect parameters
-        for _idx, name in enumerate(layer_names):
-            cur_group_name = name.split(".")[1]  # Extract current group name
-            # Update learning rate if group name changes
-            if cur_group_name != prev_group_name:
-                lr *= lr_mult
-            prev_group_name = cur_group_name  # Update previous group name for next iteration
-            #print(f'{_idx}: lr = {lr:.6f}, {name}')
-
-            # Store parameters and their associated learning rates
-            parameters += [
-                {
-                    "params": [
-                        p for n, p in self.backbone.named_parameters() if n == name and p.requires_grad
-                    ],
-                    "lr": lr,
-                }
-            ]
-        self.param = parameters
-        self.lrs = [i["lr"] for i in self.param]
 
 
         self.activation = nn.Sigmoid()
@@ -150,9 +108,8 @@ class CheXFinetune(VisionModuleBase):
     def on_validation_epoch_end(self) -> None:
         metrics = {}
         for k, v in self.val_metrics.compute().items():
-            print(k, v)
-            #if len(v) > 1:
-            if False:
+
+            if len(v) > 1:
                 metrics[f"{k}.mean"] = v.mean()
                 if len(v) == len(self.labels):
                     for label, vv in zip(self.labels, v):
@@ -169,60 +126,20 @@ class CheXFinetune(VisionModuleBase):
         raw_scores = self.forward(images)
         return raw_scores, self.activation(raw_scores)
 
-    # def train_dataloader(self):
-    #     dataset = PadChestDataset(
-    #         self.data_folder,
-    #         self.train_csv,
-    #         IMAGE_SIZE,
-    #         True,
-    #         channels=CHANNELS,
-    #     )
-    #     return DataLoader(
-    #         dataset=dataset,
-    #         batch_size=self.batch_size,
-    #         shuffle=True,
-    #         num_workers=self.num_workers,
-    #         pin_memory=True,
-    #     )
-    #
-    # def val_dataloader(self):
-    #     dataset = PadChestDataset(
-    #         self.data_folder,
-    #         self.val_csv,
-    #         IMAGE_SIZE,
-    #         True,
-    #         channels=CHANNELS,
-    #     )
-    #
-    #     return DataLoader(
-    #         dataset=dataset,
-    #         batch_size=self.batch_size,
-    #         shuffle=False,
-    #         num_workers=self.num_workers,
-    #         pin_memory=True,
-    #     )
-
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
-            #params=list(filter(lambda p: p.requires_grad, self.parameters())),
-            params=self.param,
-            lr=0,
-            #lr=self.learning_rate,
+            params=list(filter(lambda p: p.requires_grad, self.parameters())),
+            lr=self.learning_rate,
             weight_decay=0.001,
         )
-        #lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=self.gamma)
-        #return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
-    
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
-            max_lr=self.lrs,
-            #total_steps=15360,
-            steps_per_epoch = 128, 
-            epochs = 60,
+            mode="max",
             )
         lr_scheduler_config = {
             "scheduler": scheduler,
-            "interval": "step",
+            "interval": "epoch",
             "frequency": 1,
             "monitor": "val/AUROC.mean",
             "strict": True,
@@ -238,7 +155,7 @@ class CheXFinetune(VisionModuleBase):
             "--pretrained", type=str, dest="pretrained", help="model to fine tune from",
             default=None, )
         group.add_argument(
-            "--num_classes", type=int, dest="num_classes", help="number of output classes", default=1, )
+            "--num_classes", type=int, dest="num_classes", help="number of output classes", default=10, )
 
         group = parser.add_argument_group("optimization")
         group.add_argument(

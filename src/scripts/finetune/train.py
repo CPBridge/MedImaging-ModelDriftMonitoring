@@ -10,7 +10,6 @@ import torch
 from pathlib import Path
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 from model_drift.callbacks import IOMonitor
 from model_drift.models.finetune import CheXFinetune
@@ -74,16 +73,15 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
         dirpath=model_dirpath,
         filename="{epoch:0>3}",
         save_last=True,
-        save_top_k=-1,
+        save_top_k=1,
+        monitor="val/AUROC.mean",
         every_n_epochs=1,
     )
-    #early_stopping = EarlyStopping(monitor="val/AUROC.mean", patience=5, mode="max")
 
     trainer = pl.Trainer.from_argparse_args(args)
     trainer.callbacks.append(checkpoint_callback)
     trainer.callbacks.append(lr_monitor)
     trainer.callbacks.append(IOMonitor())
-    #trainer.callbacks.append(early_stopping)
 
     # trainer.callbacks.append(GPUStatsMonitor())
 

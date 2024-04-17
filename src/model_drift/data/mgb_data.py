@@ -4,7 +4,7 @@ import datetime
 TRAIN_DATE_END = datetime.datetime(year=2019, month=10, day=1)
 VAL_DATE_END = datetime.datetime(year=2020, month=1, day=1)
 # shorter timeframe to speed up validation during training, measeurements start (year=2019, month=7, day=3)
-VAL_DATE_END = datetime.datetime(year=2019, month=10, day=21)
+#VAL_DATE_END = datetime.datetime(year=2019, month=10, day=21)
 
 RAW_LABELS = [
     'No Finding',
@@ -36,6 +36,6 @@ LABEL_GROUPINGS = {
     'Pneumonia': ['Pneumonia'],
     'Pneumothorax': ['Pneumothorax'],
     'Support Devices': ['Support Devices'],
-    'Enlarged Cardiomediastinum': ['Enlarged Cardiomediastinum', 'Cardiomegaly'],
+    #'Enlarged Cardiomediastinum': ['Enlarged Cardiomediastinum', 'Cardiomegaly'],
     #'Fracture': ['Fracture'],
 }

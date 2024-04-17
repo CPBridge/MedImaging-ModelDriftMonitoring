@@ -517,6 +517,7 @@ class MGBCXRDataModule(BaseDatamodule):
         val_frontal_only=None,
         test_frontal_only=None,
         cache_folder=None,
+        point_of_care=None,
     ):
         super().__init__(
             data_folder=data_folder,
@@ -538,6 +539,7 @@ class MGBCXRDataModule(BaseDatamodule):
         self.csv_folder = Path(csv_folder)
         self.labels_csv = Path(labels_csv)
         self.cache_folder = Path(cache_folder) if cache_folder is not None else None
+        self.point_of_care = point_of_care
 
     @property
     def labels(self):
@@ -633,8 +635,9 @@ class MGBCXRDataModule(BaseDatamodule):
             dcm_df.PhotometricInterpretation.isin(self.ALLOWABLE_PIS)
         ].copy()
 
-        # Addition: only train on MGH IMG XR ER MG WHT1 images
-        dcm_df["is_er"] = dcm_df['Point of Care'].str.contains("MGH IMG XR ER MG WHT1")
+        # Addition: only train on images from one location
+        if self.point_of_care is not None:
+            dcm_df["is_poc"] = dcm_df['Point of Care'].str.contains(self.point_of_care)
 
         self.train = train_labels_df.merge(
             dcm_df,
@@ -644,9 +647,9 @@ class MGBCXRDataModule(BaseDatamodule):
         if self.train_kwargs["frontal_only"]:
             self.train = self.train[self.train.is_frontal].copy()
 
-        #HOTFIX: should later be a kwarg
-        if True:
-            self.train = self.train[self.train.is_er].copy()
+        if self.point_of_care is not None:
+            self.train = self.train[self.train.is_poc].copy()
+            print(f"Training on {self.point_of_care} only, this results in {len(self.train)} images in the training dataset.")
 
         self.train_dataset = self.__dataset_cls__(
             self.data_folder,
@@ -663,9 +666,9 @@ class MGBCXRDataModule(BaseDatamodule):
         if self.val_kwargs["frontal_only"]:
             self.val = self.val[self.val.is_frontal].copy()
 
-        #HOTFIX: should later be a kwarg
-        if True:
-            self.val = self.val[self.val.is_er].copy()
+        if self.point_of_care is not None:
+            self.val = self.val[self.val.is_poc].copy()
+            print(f"Validation on {self.point_of_care} only, this results in {len(self.val)} images in the validation dataset.")
 
         self.val_dataset = self.__dataset_cls__(
             self.data_folder,
@@ -715,6 +718,12 @@ class MGBCXRDataModule(BaseDatamodule):
             "--cache_folder",
             type=Path,
             help="Use this location to cache decompressed data.",
+        )
+        group.add_argument(
+            "--point_of_care",
+            type=str,
+            help="Will restrict the training data to this point of care",
+            default=None,
         )
 
         return parser
