@@ -73,7 +73,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
         dirpath=model_dirpath,
         filename="{epoch:0>3}",
         save_last=True,
-        save_top_k=1,
+        save_top_k=-1,
         monitor="val/AUROC.mean",
         every_n_epochs=1,
     )

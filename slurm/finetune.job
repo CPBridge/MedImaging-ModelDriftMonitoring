@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#SBATCH -o /homes/5/fd881/slurm_log/classification_imagenet_monaitransform_onlyer_cardio-%j.out
+#SBATCH -o /homes/5/fd881/slurm_log/classification_final_allpoc-%j.out
 #SBATCH -J med-image-drift-finetune
 #SBATCH -p pubgpu,rtx8000
 #SBATCH -A qtim
@@ -19,10 +19,10 @@ python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/finetune/train.
     --freeze_backbone 0 \
     --random_augmentation True \
     --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
-    --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_monaitransform_onlyer_cardio \
-    --default_root_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_imagenet_monaitransform_onlyer_cardio \
+    --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_final_allpoc \
+    --default_root_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/classification_final_allpoc \
     --num_workers 16 \
     --max_epochs 60 \
-    --learning_rate 5e-3 \
+    --learning_rate 1e-4 \
     --cache_folder /vast/qtim/projects/xray-drift/numpy_cache/ \
     #--pretrained '/autofs/cluster/qtim/projects/xray_drift/models/epoch=4-step=29844.ckpt'
