@@ -130,6 +130,10 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     # option to only evaluate drift on single location
     if args.point_of_care:
         merged_df = merged_df[merged_df["Point of Care"] == args.point_of_care].copy()
+
+    # only use frontal images
+    print("Only using frontal images")
+    merged_df = merged_df[merged_df["ViewPosition"].isin('AP', 'PA')].copy()
     
     train_df, val_df, test_df = split_on_date(
         merged_df,
@@ -137,8 +141,8 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
         col="StudyDate",
     )
 
-    #sampler = Sampler(args.sample_size, replacement=args.replacement)
-    sampler = DummySampler(args.sample_size, replacement=args.replacement)
+    sampler = Sampler(args.sample_size, replacement=args.replacement)
+    #sampler = DummySampler(args.sample_size, replacement=args.replacement)
 
 
     ref_df = val_df.copy().assign(in_distro=True)
@@ -172,7 +176,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     
     target_df = pd.concat(targets.values(), sort=True)
     # end of hard data injection code
-    dwc = mgb_default_config(ref_df, vae_cols=r"^full_mu$")
+    dwc = mgb_default_config(ref_df)#, vae_cols=r"^full_mu$")
 
     dwc.add_drift_stat(
         'performance',
