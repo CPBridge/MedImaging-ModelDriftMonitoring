@@ -78,7 +78,8 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
         every_n_epochs=1,
     )
 
-    trainer = pl.Trainer.from_argparse_args(args)
+    #gpus=1 was hardcoded because argument didnt work and it speeds up debugging
+    trainer = pl.Trainer.from_argparse_args(args, gpus=1)
     trainer.callbacks.append(checkpoint_callback)
     trainer.callbacks.append(lr_monitor)
     trainer.callbacks.append(IOMonitor())
@@ -104,6 +105,8 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     #         yaml.safe_dump(params, f)
     #     with open(os.path.join(args.output_dir, "model.txt"), 'w') as f:
     #         print(model, file=f)
+
+
 
     trainer.fit(model, dm)
 

@@ -15,9 +15,10 @@ from model_drift.data.dataset import MGBCXRDataset
 from model_drift.data.utils import split_on_date
 from model_drift.data import mgb_data
 from model_drift.drift.config import mgb_default_config
-from model_drift.drift.sampler import Sampler
+from model_drift.drift.sampler import Sampler, DummySampler
 from model_drift.drift.performance import ClassificationReportCalculator
 from model_drift import settings, helpers, mgb_locations
+from model_drift.helpers import create_score_based_ood_frame
 from pycrumbs import tracked
 import warnings
 import pandas as pd
@@ -114,24 +115,64 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     vae_df = pd.concat(
         [
             vae_df,
-            pd.DataFrame(vae_df['mu'].values.tolist(), columns=[f"mu.{c:0>3}" for c in range(128)])
+            pd.DataFrame(vae_df['mu'].values.tolist(), columns=[f"mu.{c:0>3}" for c in range(args.num_vae_features)])
         ],
         axis=1
     )
     vae_df.drop_duplicates(subset="index", inplace=True)
 
+    # rename the mu column to full_mu, to ensure avoid confusion when regex matching
+    vae_df['full_mu'] = vae_df['mu']
+
     merged_df = scores_df.merge(vae_df, on="index", how="left")
     merged_df = merged_df.merge(meta_df, on="index", how="left")
+
+    # option to only evaluate drift on single location
+    if args.point_of_care:
+        merged_df = merged_df[merged_df["Point of Care"] == args.point_of_care].copy()
+    
     train_df, val_df, test_df = split_on_date(
         merged_df,
         [mgb_data.TRAIN_DATE_END, mgb_data.VAL_DATE_END],
         col="StudyDate",
     )
 
-    sampler = Sampler(args.sample_size, replacement=args.replacement)
+    #sampler = Sampler(args.sample_size, replacement=args.replacement)
+    sampler = DummySampler(args.sample_size, replacement=args.replacement)
+
 
     ref_df = val_df.copy().assign(in_distro=True)
-    dwc = mgb_default_config(ref_df)
+
+    # here is the hard data injection
+    target_df = merged_df.set_index('StudyDate')
+    #target_df.index = pd.to_datetime(target_df.index)
+    indistro_data = target_df.copy().assign(in_distro=False)
+
+    targets = {}
+    targets["indistro"] = indistro_data
+
+    if args.bad_q:
+        targets['bad_sample_data'] = create_score_based_ood_frame(indistro_data, label_cols, q=args.bad_q,
+                                                                  sample_start_date=args.bad_sample_start_date,
+                                                                  sample_end_date=args.bad_sample_end_date,
+                                                                  ood_start_date=args.bad_start_date,
+                                                                  ood_end_date=args.bad_end_date, bottom=True
+                                                                  ).assign(in_distro=False)
+
+    if args.good_q:
+        targets['good_sample_data'] = create_score_based_ood_frame(indistro_data, label_cols, q=args.good_q,
+                                                                   sample_start_date=args.good_sample_start_date,
+                                                                   sample_end_date=args.good_sample_end_date,
+                                                                   ood_start_date=args.good_start_date,
+                                                                   ood_end_date=args.good_end_date, bottom=True
+                                                                   ).assign(in_distro=False)
+
+    for name, target in targets.items():
+        target["source"]= name
+    
+    target_df = pd.concat(targets.values(), sort=True)
+    # end of hard data injection code
+    dwc = mgb_default_config(ref_df, vae_cols=r"^full_mu$")
 
     dwc.add_drift_stat(
         'performance',
@@ -144,12 +185,16 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
 
     dwc.prepare(ref_df)
 
-    target_df = merged_df.set_index('StudyDate')
+    #target_df = merged_df.set_index('StudyDate')
 
     ref_df.to_csv(output_dir.joinpath('ref.csv'))
     target_df.to_csv(output_dir.joinpath('target.csv'))
 
     print("starting drift experiment!")
+
+    print("Currently all warnings are being supressed, this is not safe!")
+    warnings.filterwarnings("ignore")
+
     output = dwc.rolling_window_predict(
         target_df,
         sampler=sampler,
@@ -161,6 +206,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
         backend="threading",
         refresh_rate=.01,
         output_dir=output_dir,
+        agg = ('min', 'max', 'mean', 'std', 'median')
     )
     output.to_csv(fname)
 
@@ -215,6 +261,9 @@ if __name__ == '__main__':
 
     parser.add_argument("--start_date", type=str, default=None)
     parser.add_argument("--end_date", type=str, default=None)
+
+    parser.add_argument("--num_vae_features", type=int, default=128)
+    parser.add_argument("--point_of_care", type=str, default=None)
 
     args = parser.parse_args()
 

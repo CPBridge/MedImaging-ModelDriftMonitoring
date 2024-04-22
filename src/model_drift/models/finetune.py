@@ -10,6 +10,8 @@ from torchmetrics import AUROC, MetricCollection
 from torchvision import models
 
 from .base import VisionModuleBase
+from model_drift.data.datamodules import MGBCXRDataModule
+
 
 
 class CheXFinetune(VisionModuleBase):

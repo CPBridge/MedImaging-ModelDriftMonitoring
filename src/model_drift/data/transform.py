@@ -33,13 +33,17 @@ class VisionTransformer(Transformer):
 
     @property
     def train_transform(self):
-        image_transformation = [
-            transforms.Resize(self.image_size),
-            transforms.CenterCrop(self.image_size),
-        ]
+        image_transformation = []
         if self.channels == 1:
             image_transformation.append(transforms.Grayscale(num_output_channels=self.channels))
-        image_transformation.append(transforms.ToTensor())
+        
+        image_transformation.extend([ 
+            transforms.Resize((320, 320)),
+            transforms.CenterCrop((320, 320)),
+        ])
+        #if self.channels == 1:
+        #    image_transformation.append(transforms.Grayscale(num_output_channels=self.channels))
+        #image_transformation.append(transforms.ToTensor())
         image_transformation += self.normalization
         image_transformation.append(HistogramNormalize())
 
