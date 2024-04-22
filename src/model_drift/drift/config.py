@@ -121,7 +121,7 @@ def padchest_default_config(dataframe, vae_cols=r"mu\..*", score_cols=r"activati
     return dwc
 
 
-def mgb_default_config(dataframe, vae_cols=r"mu\..*", score_cols=r"activation\..*"):
+def mgb_default_config(dataframe, point_of_care, vae_cols=r"mu\..*", score_cols=r"activation\..*"):
 
     if isinstance(vae_cols, six.string_types):
         vae_cols = [vae_cols]
@@ -155,6 +155,10 @@ def mgb_default_config(dataframe, vae_cols=r"mu\..*", score_cols=r"activation\..
         "Is Stat",
         "Exam Code",
     ]
+
+    # if we are limiting to one point of care, this should not be a variable
+    if point_of_care:
+        metadata_cat_cols.remove("Point of Care")
 
     metadata_age_cols = ["Patient Age"]
 

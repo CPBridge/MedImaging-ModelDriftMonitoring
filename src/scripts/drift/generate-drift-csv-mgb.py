@@ -178,7 +178,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     
     target_df = pd.concat(targets.values(), sort=True)
     # end of hard data injection code
-    dwc = mgb_default_config(ref_df)#, vae_cols=r"^full_mu$")
+    dwc = mgb_default_config(ref_df, args.point_of_care)#, vae_cols=r"^full_mu$")
 
     dwc.add_drift_stat(
         'performance',
