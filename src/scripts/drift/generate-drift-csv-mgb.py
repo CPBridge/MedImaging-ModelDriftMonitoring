@@ -133,8 +133,10 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
 
     # only use frontal images
     print("Only using frontal images")
-    merged_df = merged_df[merged_df["ViewPosition"].isin('AP', 'PA')].copy()
-    
+    print(f"Number of samples before filtering: {len(merged_df)}")
+    merged_df = merged_df[merged_df["ViewPosition"].isin(('AP', 'PA'))].copy()
+    print(f"Number of samples after filtering: {len(merged_df)}")
+
     train_df, val_df, test_df = split_on_date(
         merged_df,
         [mgb_data.TRAIN_DATE_END, mgb_data.VAL_DATE_END],
