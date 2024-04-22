@@ -156,9 +156,10 @@ def mgb_default_config(dataframe, point_of_care, vae_cols=r"mu\..*", score_cols=
         "Exam Code",
     ]
 
-    # if we are limiting to one point of care, this should not be a variable
+    # if we are limiting to one point of care, some columns produce errors
     if point_of_care:
-        metadata_cat_cols.remove("Point of Care")
+        #removed from metadata_cat_cols, as there are only nans for the ER
+        metadata_float_cols.remove("RelativeXRayExposure")
 
     metadata_age_cols = ["Patient Age"]
 
