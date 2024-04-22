@@ -29,7 +29,7 @@ class DummySampler(object):
     """
     This is a dummy sampler that mimics the behavior of the Sampler class, but does
     not perform any samples and instead returns the indicies unchanged. This is used
-    for the Flapjack resampling, in which the reference dataframe is resampled in the 
+    for the JackKnife resampling, in which the reference dataframe is resampled in the 
     metric itself and the sliding window sample is not resampled at all. In this case 
     we still want to create multiple copies of the sample window. 
     """

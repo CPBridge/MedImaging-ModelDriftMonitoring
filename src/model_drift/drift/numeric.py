@@ -49,8 +49,8 @@ class KSDriftCalculator(NumericBaseDriftCalculator):
         return kolmogi(q) * np.sqrt((n1 + n2) / (n1 * n2))
 
 
-class KSDriftCalculatorFlapJack(NumericBaseDriftCalculator):
-    name = "ks_flapjack"
+class KSDriftCalculatorJackKnife(NumericBaseDriftCalculator):
+    name = "ks_jackknife"
 
     def __init__(self, q_val=0.1, alternative='two-sided', mode='asymp', average='macro', include_critical_value=False,
                  **kwargs):
@@ -79,13 +79,13 @@ class KSDriftCalculatorFlapJack(NumericBaseDriftCalculator):
             out["distance"], out['pval'] = float("NaN"), float("NaN")
 
         if self.include_critical_value:
-            raise NotImplementedError("Critical value not implemented for flapjack")
+            raise NotImplementedError("Critical value not implemented for jackknife")
  
         return out
 
 
-class EMDDriftCalculatorFlapJack(NumericBaseDriftCalculator):
-    name = "emd_flapjack"
+class EMDDriftCalculatorJackKnife(NumericBaseDriftCalculator):
+    name = "emd_jackknife"
 
     def __init__(self, include_critical_value=False, **kwargs):
         super().__init__(**kwargs)
@@ -131,7 +131,7 @@ class EMDDriftCalculatorFlapJack(NumericBaseDriftCalculator):
             out["distance"], out['pval'] = float("NaN"), float("NaN")
 
         if self.include_critical_value:
-            raise NotImplementedError("Critical value not implemented for flapjack")
+            raise NotImplementedError("Critical value not implemented for jackknife")
  
         return out
 

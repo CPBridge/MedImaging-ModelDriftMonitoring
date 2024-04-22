@@ -56,8 +56,8 @@ class ChiSqDriftCalculator(BaseDriftCalculator):
 
 
 
-class ChiSqDriftCalculatorFlapJack(BaseDriftCalculator):
-    name = "chi2_flapjack"
+class ChiSqDriftCalculatorJackKnife(BaseDriftCalculator):
+    name = "chi2_jackknife"
 
     def __init__(self, q_val=0.1, correction=True, lambda_=None, use_freq=False, include_critical_values=False,
                  **kwargs):
@@ -113,7 +113,7 @@ class ChiSqDriftCalculatorFlapJack(BaseDriftCalculator):
 
         
         if self.include_critical_values:
-            raise NotImplementedError("Critical value not implemented for flapjack")
+            raise NotImplementedError("Critical value not implemented for jackknife")
 
         return out
 #  
