@@ -389,7 +389,7 @@ class VAE(VisionModuleBase):
             type=int,
             dest="log_recon_images",
             help="log_recon_images",
-            default=32,
+            default=0,
         )
 
         return parser
