@@ -27,24 +27,24 @@ def normal_init(m, mean, std):
 class VAE(VisionModuleBase):
     def __init__(
             self,
-            image_dims=(3, 128, 128),
-            zsize=8,
-            layer_count=3,
-            width=16,
+            image_dims=(1, 128, 128),
+            zsize=128,
+            layer_count=4,
+            width=240,
             #
             num_workers=8,
             #
-            base_lr=1e-3,
+            base_lr=1e-4,
             weight_decay=1e-5,
             #
-            lr_scheduler="step",
-            step_size=7,
+            lr_scheduler="plateau",
+            step_size=3,
             gamma=0.1,
             min_lr=0,
             cooldown=0,
             kl_coeff=0.1,
             #
-            log_recon_images=16,
+            log_recon_images=32,
             ignore_nonfrontal_loss=False,
             #
             labels=None, params=None
@@ -301,22 +301,22 @@ class VAE(VisionModuleBase):
 
         group = parser.add_argument_group("module")
         group.add_argument("--image_dims", type=int, dest="image_dims", help="image_dims", default=(1, 128, 128))
-        group.add_argument("--z", type=int, dest="zsize", help="zsize", default=8)
+        group.add_argument("--z", type=int, dest="zsize", help="zsize", default=128)
         group.add_argument(
             "--layer_count",
             type=int,
             dest="layer_count",
             help="layer count for encoder/decoder",
-            default=3,
+            default=4,
         )
-        group.add_argument("--width", type=int, dest="width", help="d", default=16)
+        group.add_argument("--width", type=int, dest="width", help="d", default=240)
 
         group.add_argument(
             "--base_lr",
             type=float,
             dest="base_lr",
             help="base learning rate",
-            default=1e-3,
+            default=1e-4,
         )
 
         group.add_argument(
@@ -356,7 +356,7 @@ class VAE(VisionModuleBase):
             type=int,
             dest="step_size",
             help="step_size for lr schedulers, if reduce on plateau, this value is used for 'patience'",
-            default=7,
+            default=3,
         )
 
         group.add_argument(
@@ -365,7 +365,7 @@ class VAE(VisionModuleBase):
             choices=["step", "plateau"],
             dest="lr_scheduler",
             help="lr_scheduler type",
-            default="step",
+            default="plateau",
         )
 
         group.add_argument(
@@ -389,7 +389,7 @@ class VAE(VisionModuleBase):
             type=int,
             dest="log_recon_images",
             help="log_recon_images",
-            default=0,
+            default=32,
         )
 
         return parser

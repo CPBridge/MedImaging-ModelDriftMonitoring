@@ -99,7 +99,7 @@ checkpoint_callback = ModelCheckpoint(
     every_n_epochs=1,
 )
 
-trainer = pl.Trainer.from_argparse_args(args)
+trainer = pl.Trainer.from_argparse_args(args)#, gradient_clip_val=1.0)
 trainer.callbacks.append(checkpoint_callback)
 trainer.callbacks.append(lr_monitor)
 trainer.callbacks.append(IOMonitor())
@@ -110,7 +110,10 @@ if args.run_azure:
     trainer.logger = get_azure_logger()
 
 transformer = VisionTransformer.from_argparse_args(args)
-dm = dm_cls.from_argparse_args(args, output_dir=args.output_dir, transforms=transformer.val_transform)
+dm = dm_cls.from_argparse_args(args, 
+                               output_dir=args.output_dir, 
+                               transforms=transformer.val_transform)
+
 args.image_dims = transformer.dims
 params = vars(args)
 model = VAE.from_argparse_args(args, params=params)
