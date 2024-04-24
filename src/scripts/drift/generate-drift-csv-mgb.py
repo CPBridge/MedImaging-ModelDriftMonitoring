@@ -185,7 +185,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
         ClassificationReportCalculator(
             target_names=tuple(mgb_data.LABEL_GROUPINGS)
         ),
-        col=("score", "label"),
+        col=("activation", "label"),
         include_stat_name=False
     )
 
