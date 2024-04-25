@@ -164,30 +164,31 @@ def mgb_default_config(dataframe, point_of_care, vae_cols=r"mu\..*", score_cols=
     metadata_age_cols = ["Patient Age"]
 
     def add_vae_metrics(dwc: TabularDriftCalculator, col: str):
-        dwc.add_drift_stat(col, KSDriftCalculator(), drilldown=False, group="appearance")
+        #dwc.add_drift_stat(col, KSDriftCalculator(), drilldown=False, group="appearance")
         #dwc.add_drift_stat(col, KSDriftCalculatorJackKnife(), drilldown=False, group="appearance")
-        #dwc.add_drift_stat(col, EMDDriftCalculatorJackKnife(), drilldown=False, group="appearance")
-        dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500), drilldown=True, group="appearance")
+        dwc.add_drift_stat(col, EMDDriftCalculatorJackKnife(), drilldown=False, group="appearance")
+        #dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500), drilldown=True, group="appearance")
 
     def add_score_metrics(dwc: TabularDriftCalculator, col: str):
-        dwc.add_drift_stat(col, KSDriftCalculator(), drilldown=False, group="ai")
+        #dwc.add_drift_stat(col, KSDriftCalculator(), drilldown=False, group="ai")
         #dwc.add_drift_stat(col, KSDriftCalculatorJackKnife(), drilldown=False, group="ai")
-        dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500), drilldown=True, group="ai")
+        dwc.add_drift_stat(col, EMDDriftCalculatorJackKnife(), drilldown=False, group="ai")
+        #dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500), drilldown=True, group="ai")
 
     def add_metadata_metrics(dwc: TabularDriftCalculator, col: str):
         if col in metadata_age_cols:
-            dwc.add_drift_stat(col, KSDriftCalculator(), drilldown=False, group="metadata")
-            #dwc.add_drift_stat(col, KSDriftCalculatorJackKnife(), drilldown=False, group="metadata")
-            dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500, hist_tol=0, kde_tol=0), drilldown=True,
-                               group="metadata")
+            #dwc.add_drift_stat(col, KSDriftCalculator(), drilldown=False, group="metadata")
+            dwc.add_drift_stat(col, KSDriftCalculatorJackKnife(), drilldown=False, group="metadata")
+            #dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500, hist_tol=0, kde_tol=0), drilldown=True,
+            #                   group="metadata")
         elif col in metadata_float_cols:
-            dwc.add_drift_stat(col, KSDriftCalculator(), drilldown=False, group="metadata")
-            #dwc.add_drift_stat(col, KSDriftCalculatorJackKnife(), drilldown=False, group="metadata")
-            dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500), drilldown=True, group="metadata")
+            #dwc.add_drift_stat(col, KSDriftCalculator(), drilldown=False, group="metadata")
+            dwc.add_drift_stat(col, KSDriftCalculatorJackKnife(), drilldown=False, group="metadata")
+            #dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500), drilldown=True, group="metadata")
         elif col in metadata_cat_cols:
-            dwc.add_drift_stat(col, ChiSqDriftCalculator(), drilldown=False, group="metadata")
-            #dwc.add_drift_stat(col, ChiSqDriftCalculatorJackKnife(), drilldown=False, group="metadata")
-            dwc.add_drift_stat(col, HistIntersectionCalculator(), drilldown=True, group="metadata")
+            #dwc.add_drift_stat(col, ChiSqDriftCalculator(), drilldown=False, group="metadata")
+            dwc.add_drift_stat(col, ChiSqDriftCalculatorJackKnife(), drilldown=False, group="metadata")
+            #dwc.add_drift_stat(col, HistIntersectionCalculator(), drilldown=True, group="metadata")
 
     score_cols = match_keys(list(dataframe), score_cols)
     vae_cols = match_keys(list(dataframe), vae_cols)

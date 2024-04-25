@@ -143,8 +143,8 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
         col="StudyDate",
     )
 
-    sampler = Sampler(args.sample_size, replacement=args.replacement)
-    #sampler = DummySampler(args.sample_size, replacement=args.replacement)
+    #sampler = Sampler(args.sample_size, replacement=args.replacement)
+    sampler = DummySampler(args.sample_size, replacement=args.replacement)
 
 
     ref_df = val_df.copy().assign(in_distro=True)
@@ -178,7 +178,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     
     target_df = pd.concat(targets.values(), sort=True)
     # end of hard data injection code
-    dwc = mgb_default_config(ref_df, args.point_of_care)#, vae_cols=r"^full_mu$")
+    dwc = mgb_default_config(ref_df, args.point_of_care, vae_cols=r"^full_mu$", score_cols= r"^activation$")
 
     dwc.add_drift_stat(
         'performance',
