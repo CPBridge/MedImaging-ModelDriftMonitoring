@@ -175,7 +175,7 @@ def plot_hist_feature(feature, basepath, output_dir):
 
             trace_counter += 1
             max_hist_value = max(hist)
-            max_y_value = max(max_y_value, max_hist_value, max_kde_value)
+            max_y_value = max(max_y_value, max_hist_value)
 
         else:
             # Categorical data processing
