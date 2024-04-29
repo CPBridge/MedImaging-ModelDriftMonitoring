@@ -231,7 +231,7 @@ def basic_performance_plots(
     dirname = os.path.dirname(drift_csv_path)
     base_path_drilldown = os.path.join(dirname, 'history')
 
-    date_json = os.path.join(base_path_drilldown, '2019-07-01.json')
+    date_json = os.path.join(base_path_drilldown, '2019-10-10.json')
     with open(date_json, 'r') as f:
         data = json.load(f)
 
