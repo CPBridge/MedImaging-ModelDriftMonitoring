@@ -54,6 +54,18 @@ def basic_performance_plots(
         and col[2] == 'distance'
         and col[3] == 'mean'
     ]
+    mmc_cols_min = [
+        col for col in df.columns
+        if not col[0].startswith('performance')
+        and col[2] == 'distance'
+        and col[3] == 'min'
+    ]
+    mmc_cols_max = [
+        col for col in df.columns
+        if not col[0].startswith('performance')
+        and col[2] == 'distance'
+        and col[3] == 'max'
+    ]
 
     vae_cols = [
         col for col in df.columns
@@ -80,6 +92,9 @@ def basic_performance_plots(
 
     
     mmc_df = df[mmc_cols + [date_col]].copy()
+    mmc_df_min = df[mmc_cols_min + [date_col]].copy()
+    mmc_df_max = df[mmc_cols_max + [date_col]].copy()
+
     ref_df = mmc_df[mmc_df[date_col] < mgb_data.VAL_DATE_END].copy()
 
     mmc_df_weights = df[mmc_cols + [date_col]+ [performance_col]].copy()
@@ -89,11 +104,24 @@ def basic_performance_plots(
 
     # Normalize columns by mean and std of reference data
     for c in mmc_cols:
-        mmc_df[c] = (mmc_df[c] - ref_df[c].mean()) / ref_df[c].std()
+        mmc_df[c] = (mmc_df[c] - ref_df[c].mean()) / (ref_df[c].std() + 1e-6)
+        # replace mean word in c with min
+        c_list = list(c)
+        c_list[-1] = 'min'
+        c_min = tuple(c_list)
+        mmc_df_min[c_min] = (mmc_df_min[c_min] - ref_df[c].mean()) / (ref_df[c].std() + 1e-6)
+        # replace mean word in c with max
+        c_list = list(c)
+        c_list[-1] = 'max'
+        c_max = tuple(c_list)
+        mmc_df_max[c_max] = (mmc_df_max[c_max] - ref_df[c].mean()) / (ref_df[c].std() + 1e-6)
 
     mmc_df['mmc'] = mmc_df.mean(axis=1)
+    mmc_df_min['mmc'] = mmc_df_min.mean(axis=1)
+    mmc_df_max['mmc'] = mmc_df_max.mean(axis=1)
 
 
+    analysis_utils.create_mmc_plot(mmc_df, date_col, output_dir, title='Unweighted MMC with Range', mmc_min=mmc_df_min, mmc_max=mmc_df_max)
     analysis_utils.create_mmc_plot(mmc_df, date_col, output_dir, title='Unweighted MMC')
 
     # Weighted MMC
@@ -125,10 +153,15 @@ def basic_performance_plots(
         json.dump(weights, f)
 
     mmc_df_weighted = mmc_df.copy()
+    mmc_df_min_weighted = mmc_df_min.copy()
+    mmc_df_max_weighted = mmc_df_max.copy()
 
     mmc_df_weighted.drop(columns=["mmc"], inplace=True)
+    mmc_df_min_weighted.drop(columns=["mmc"], inplace=True)
+    mmc_df_max_weighted.drop(columns=["mmc"], inplace=True)
 
 
+        
     for col in mmc_df_weighted.columns:
         metric_name = [metric for metric in col if metric in weights]
         if metric_name:
@@ -138,16 +171,45 @@ def basic_performance_plots(
             print(f"Column {col} does not match any metric name in the weights dictionary")
     mmc_df_weighted['mmc'] = mmc_df_weighted.sum(axis=1)
 
+    for col in mmc_df_min_weighted.columns:
+        metric_name = [metric for metric in col if metric in weights]
+        if metric_name:
+            mmc_df_min_weighted[col] = mmc_df_min_weighted[col] * weights[metric_name[0]]
+
+        else:
+            print(f"Column {col} does not match any metric name in the weights dictionary")
+    mmc_df_min_weighted['mmc'] = mmc_df_min_weighted.sum(axis=1)
+
+    for col in mmc_df_max_weighted.columns:
+        metric_name = [metric for metric in col if metric in weights]
+        if metric_name:
+            mmc_df_max_weighted[col] = mmc_df_max_weighted[col] * weights[metric_name[0]]
+
+        else:
+            print(f"Column {col} does not match any metric name in the weights dictionary")
+    mmc_df_max_weighted['mmc'] = mmc_df_max_weighted.sum(axis=1)
+
+    analysis_utils.create_mmc_plot(mmc_df_weighted, date_col, output_dir, title='Weighted MMC with Range', mmc_min=mmc_df_min_weighted, mmc_max=mmc_df_max_weighted)
     analysis_utils.create_mmc_plot(mmc_df_weighted, date_col, output_dir, title='Weighted MMC')
 
     # VAE features alone
     vae_df = df[vae_cols + [date_col]].copy()
+    vae_ref_df = vae_df[vae_df[date_col] < mgb_data.VAL_DATE_END].copy()
+
+    for c in vae_cols:
+        vae_df[c] = (vae_df[c] - vae_ref_df[c].mean()) / vae_ref_df[c].std()
+
     vae_df['mean_vae_distance'] = vae_df[vae_cols].mean(axis=1)
 
     analysis_utils.create_mmc_plot(vae_df, date_col, output_dir, title='VAE', col_plot='mean_vae_distance')
 
     # Score features alone
     score_df = df[score_cols + [date_col]].copy()
+    score_ref_df = score_df[score_df[date_col] < mgb_data.VAL_DATE_END].copy()
+
+    for c in score_cols:
+        score_df[c] = (score_df[c] - score_ref_df[c].mean()) / score_ref_df[c].std()
+
     score_df['mean_activation_distance'] = score_df[score_cols].mean(axis=1)
 
     analysis_utils.create_mmc_plot(score_df, date_col, output_dir, title='Score', col_plot='mean_activation_distance')

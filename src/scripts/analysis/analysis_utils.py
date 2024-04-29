@@ -78,13 +78,20 @@ def create_performance_plots(df: pd.DataFrame, output_dir: Path):
     plt.close()
 
 
-def create_mmc_plot(df, date_col, output_dir, title, col_plot = 'MMC'):
+def create_mmc_plot(df, date_col, output_dir, title, col_plot = 'MMC', mmc_min = None, mmc_max = None):
     plt.style.use('ggplot')
 
 
     # Plot setup
-    fig, ax = plt.subplots(figsize=(10, 6))  
-    ax.plot(df[date_col], df[col_plot.lower()], label=col_plot)  
+    if mmc_min is None:
+        fig, ax = plt.subplots(figsize=(10, 6))  
+        ax.plot(df[date_col], df[col_plot.lower()], label=col_plot)  
+        
+    else:
+        fig, ax = plt.subplots(figsize=(10, 6))  
+        ax.plot(df[date_col], df[col_plot.lower()], label=col_plot)  
+        ax.fill_between(df[date_col], mmc_min['mmc'], mmc_max['mmc'], alpha=0.5, label='MMC Range', color='gray')
+
     ax.set_title(title)  
     ax.set_xlabel('Date')  
     ax.set_ylabel(col_plot)  
