@@ -18,7 +18,7 @@ class CheXFinetune(VisionModuleBase):
     def __init__(
             self,
             pretrained=None,
-            num_classes=10,
+            num_classes=9,
             learning_rate=0.001,
             step_size=7,
             gamma=1,
@@ -157,7 +157,7 @@ class CheXFinetune(VisionModuleBase):
             "--pretrained", type=str, dest="pretrained", help="model to fine tune from",
             default=None, )
         group.add_argument(
-            "--num_classes", type=int, dest="num_classes", help="number of output classes", default=10, )
+            "--num_classes", type=int, dest="num_classes", help="number of output classes", default=9, )
 
         group = parser.add_argument_group("optimization")
         group.add_argument(

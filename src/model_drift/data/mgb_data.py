@@ -27,7 +27,7 @@ RAW_LABELS = [
 LABEL_GROUPINGS = {
     'Atelectasis': ['Atelectasis'],
     'Cardiomegaly': ['Cardiomegaly'],
-    'Consolidation': ['Consolidation'],
+    #'Consolidation': ['Consolidation'],
     'Edema': ['Edema'],
     #'Lung Lesion': ['Lung Lesion'],
     # 'No Finding': ['No Finding'],
