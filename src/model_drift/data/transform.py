@@ -43,7 +43,7 @@ class VisionTransformer(Transformer):
         ])
         #if self.channels == 1:
         #    image_transformation.append(transforms.Grayscale(num_output_channels=self.channels))
-        #image_transformation.append(transforms.ToTensor())
+        image_transformation.append(transforms.ToTensor())
         image_transformation += self.normalization
         image_transformation.append(HistogramNormalize())
 
