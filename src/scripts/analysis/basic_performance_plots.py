@@ -1,11 +1,11 @@
 from email import utils
 from pathlib import Path
 import pandas as pd
-
 import sys
 import os
 sys.path.append('/autofs/homes/005/fd881/repos/MedImaging-ModelDriftMonitoring/')
 sys.path.append('/home/fd881/repos/MedImaging-ModelDriftMonitoring/')
+from datetime import datetime
 
 
 import click
@@ -27,10 +27,14 @@ plt.rcParams['svg.fonttype'] = 'none'
 @click.command()
 @click.argument('drift-csv-path', type=Path)
 @click.argument('output-dir', type=Path)
+@click.option('--ref-window-start', default='', help='Start of reference window for MMC calculation')
+@click.option('--ref-window-end', default='', help='End of reference window for MMC calculation')
 @tracked(directory_parameter='output_dir')
 def basic_performance_plots(
         drift_csv_path: Path,
         output_dir: Path,
+        ref_window_start: str = '', 
+        ref_window_end: str = '', 
 ):
     """Makes some basic performance against time plots from a drift CSV."""
     df = pd.read_csv(drift_csv_path, header=[0, 1, 2, 3])
@@ -41,6 +45,13 @@ def basic_performance_plots(
     # The date column gets read in with a stupid name
     date_col = tuple(f'Unnamed: 0_level_{i}' for i in range(4))
     performance_col = ('performance', 'micro avg', 'auroc', 'mean')
+
+    if ref_window_start:
+        ref_window_start = datetime.strptime(ref_window_start, "%Y-%m-%d")
+        ref_window_end = datetime.strptime(ref_window_end, "%Y-%m-%d")
+    else:
+        ref_window_start = mgb_data.TRAIN_DATE_END
+        ref_window_end = mgb_data.VAL_DATE_END
 
     df[date_col] = pd.to_datetime(df[date_col])
 
@@ -95,11 +106,10 @@ def basic_performance_plots(
     mmc_df_min = df[mmc_cols_min + [date_col]].copy()
     mmc_df_max = df[mmc_cols_max + [date_col]].copy()
 
-    ref_df = mmc_df[mmc_df[date_col] < mgb_data.VAL_DATE_END].copy()
+    ref_df = mmc_df[(mmc_df[date_col] >= ref_window_start) & (mmc_df[date_col] < ref_window_end)].copy()
 
     mmc_df_weights = df[mmc_cols + [date_col]+ [performance_col]].copy()
-    ref_df_weights = mmc_df_weights[mmc_df_weights[date_col] < mgb_data.VAL_DATE_END].copy()
-
+    ref_df_weights = mmc_df_weights[(mmc_df_weights[date_col] >= ref_window_start) & (mmc_df_weights[date_col] < ref_window_end)].copy()
 
 
     # Normalize columns by mean and std of reference data
@@ -194,7 +204,7 @@ def basic_performance_plots(
 
     # VAE features alone
     vae_df = df[vae_cols + [date_col]].copy()
-    vae_ref_df = vae_df[vae_df[date_col] < mgb_data.VAL_DATE_END].copy()
+    vae_ref_df = vae_df[(vae_df[date_col] >= ref_window_start) & (vae_df[date_col] < ref_window_end)].copy()
 
     for c in vae_cols:
         vae_df[c] = (vae_df[c] - vae_ref_df[c].mean()) / vae_ref_df[c].std()
@@ -205,7 +215,7 @@ def basic_performance_plots(
 
     # Score features alone
     score_df = df[score_cols + [date_col]].copy()
-    score_ref_df = score_df[score_df[date_col] < mgb_data.VAL_DATE_END].copy()
+    score_ref_df = score_df[(score_df[date_col] >= ref_window_start) & (score_df[date_col] < ref_window_end)].copy()
 
     for c in score_cols:
         score_df[c] = (score_df[c] - score_ref_df[c].mean()) / score_ref_df[c].std()
@@ -216,7 +226,7 @@ def basic_performance_plots(
 
     # Metadata features alone
     metadata_df = df[metadata_cols + [date_col]].copy()
-    metadata_ref_df = metadata_df[metadata_df[date_col] < mgb_data.VAL_DATE_END].copy()
+    metadata_ref_df = metadata_df[(metadata_df[date_col] >= ref_window_start) & (metadata_df[date_col] < ref_window_end)].copy()
 
     for c in metadata_cols:
         metadata_df[c] = (metadata_df[c] - metadata_ref_df[c].mean()) / metadata_ref_df[c].std()
