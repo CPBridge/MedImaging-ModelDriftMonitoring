@@ -42,7 +42,7 @@ def basic_performance_plots(
     ref_window_start = datetime.strptime(ref_window_start_str, "%Y-%m-%d")
     ref_window_end = datetime.strptime(ref_window_end_str, "%Y-%m-%d")
 
-    is_jackknife = 'jackknife' in str(drift_csv_path)
+    is_emd = 'emd' in str(drift_csv_path)
     
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -94,7 +94,7 @@ def basic_performance_plots(
     metadata_cols = [
         col for col in df.columns
         if not col[0].startswith('performance')
-        if not col[0].startswith('mu')
+        if not col[0].startswith('mu') | col[0].startswith('full_mu')
         if not col[0].startswith('activation')
         and col[2] == 'distance'
         and col[3] == 'mean'
@@ -133,29 +133,60 @@ def basic_performance_plots(
     analysis_utils.create_mmc_plot(mmc_df, date_col, output_dir, title='Unweighted MMC with Range', mmc_min=mmc_df_min, mmc_max=mmc_df_max)
     analysis_utils.create_mmc_plot(mmc_df, date_col, output_dir, title='Unweighted MMC')
 
-    # Weighted MMC
-    correlation_matrix = ref_df_weights.corr()
 
-    # To get correlation with the performance column specifically
-    performance_correlation = correlation_matrix[performance_col]
-    performance_correlation_df = pd.DataFrame(performance_correlation)
-    plot_df = performance_correlation_df.reset_index()
-    plot_df.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in plot_df.columns]
+    if is_emd:
+        #  For runs with EMD, we will weight each drift compoment (metadata, vae, activations) as 1/3. Within the metadat we are still weighting according to correlation with performance
+        correlation_matrix = ref_df_weights[metadata_cols + [performance_col]].corr()
+        performance_correlation = correlation_matrix[performance_col]
+        performance_correlation_df = pd.DataFrame(performance_correlation)
+        plot_df = performance_correlation_df.reset_index()
+        plot_df.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in plot_df.columns]
 
-    plot_df.drop(columns=["level_1___", "level_2___", "level_3___"], inplace=True)
-    plot_df.columns = ["Metric", "Avg_AUROC_mean"]
+        plot_df.drop(columns=["level_1___", "level_2___", "level_3___"], inplace=True)
+        plot_df.columns = ["Metric", "Avg_AUROC_mean"]
 
-    # drop row where Metric is performance
-    plot_df = plot_df[plot_df["Metric"] != "performance"]
+        # drop row where Metric is performance
+        plot_df = plot_df[plot_df["Metric"] != "performance"]
 
-    weights_raw = pd.Series(plot_df.Avg_AUROC_mean.values, index=plot_df.Metric).to_dict()
-    weights = {metric: abs(weight) for metric, weight in weights_raw.items()}
+        weights_raw = pd.Series(plot_df.Avg_AUROC_mean.values, index=plot_df.Metric).to_dict()
+        weights = {metric: abs(weight) for metric, weight in weights_raw.items()}
 
-    #replace nan values with 0 for next step
-    weights = {metric: (0 if np.isnan(weight) else weight) for metric, weight in weights.items()}
+        #replace nan values with 0 for next step
+        weights = {metric: (0 if np.isnan(weight) else weight) for metric, weight in weights.items()}
 
-    # normalize and take negative value -> should that be applied before?
-    weights = {metric: (-1) * weight / sum(weights.values()) for metric, weight in weights.items()}
+        # normalize and take negative value. Note: Here the weights should sum to 1/3, as we will be adding the vae and scores each with 1/3 as well
+        weights = {metric: (-1/3) * weight / (sum(weights.values())) for metric, weight in weights.items()}
+
+        # add weight for vae and score
+        weights['full_mu'] = -1/3
+        weights['activation'] = -1/3
+
+    else:
+
+        # Weighted MMC
+        correlation_matrix = ref_df_weights.corr()
+
+        # To get correlation with the performance column specifically
+        performance_correlation = correlation_matrix[performance_col]
+        performance_correlation_df = pd.DataFrame(performance_correlation)
+        plot_df = performance_correlation_df.reset_index()
+        plot_df.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in plot_df.columns]
+
+        plot_df.drop(columns=["level_1___", "level_2___", "level_3___"], inplace=True)
+        plot_df.columns = ["Metric", "Avg_AUROC_mean"]
+
+        # drop row where Metric is performance
+        plot_df = plot_df[plot_df["Metric"] != "performance"]
+
+        weights_raw = pd.Series(plot_df.Avg_AUROC_mean.values, index=plot_df.Metric).to_dict()
+        weights = {metric: abs(weight) for metric, weight in weights_raw.items()}
+
+        #replace nan values with 0 for next step
+        weights = {metric: (0 if np.isnan(weight) else weight) for metric, weight in weights.items()}
+
+        # normalize and take negative value -> should that be applied before?
+        weights = {metric: (-1) * weight / sum(weights.values()) for metric, weight in weights.items()}
+
 
     # save weights for future reference
     with open(os.path.join(output_dir, 'correlation_weights.json'), 'w') as f:
