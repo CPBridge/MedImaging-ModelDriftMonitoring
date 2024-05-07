@@ -39,6 +39,13 @@ def basic_performance_plots(
     """Makes some basic performance against time plots from a drift CSV."""
     df = pd.read_csv(drift_csv_path, header=[0, 1, 2, 3])
 
+    # load the raw file with all exams in reference window to get the start and end dates
+    ref_csv = pd.read_csv(drift_csv_path.replace('output.csv', 'ref.csv'))
+    ref_window_start = ref_csv["Study Date"].min()
+    print(ref_window_start)
+    return
+    is_jackknife = drift_csv_path.str.contains('jackknife').any()
+    
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
