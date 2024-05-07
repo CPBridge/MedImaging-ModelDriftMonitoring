@@ -4,7 +4,7 @@
 #  ------------------------------------------------------------------------------------------
 import os
 from pathlib import Path
-import datetime
+from datetime import datetime
 
 library_path = str(Path(__file__).parent.parent.parent)
 PYPATH = os.environ.get("PYTHONPATH", "").split(":")
