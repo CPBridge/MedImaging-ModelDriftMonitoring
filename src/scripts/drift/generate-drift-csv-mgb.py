@@ -4,6 +4,7 @@
 #  ------------------------------------------------------------------------------------------
 import os
 from pathlib import Path
+import datetime
 
 library_path = str(Path(__file__).parent.parent.parent)
 PYPATH = os.environ.get("PYTHONPATH", "").split(":")
@@ -22,7 +23,6 @@ from model_drift.helpers import create_score_based_ood_frame
 from pycrumbs import tracked
 import warnings
 import pandas as pd
-import numpy as np
 
 import argparse
 
@@ -137,11 +137,26 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     merged_df = merged_df[merged_df["ViewPosition"].isin(('AP', 'PA'))].copy()
     print(f"Number of samples after filtering: {len(merged_df)}")
 
-    train_df, val_df, test_df = split_on_date(
-        merged_df,
-        [mgb_data.TRAIN_DATE_END, mgb_data.VAL_DATE_END],
-        col="StudyDate",
-    )
+    if args.ref_window_start and args.ref_window_end:
+        ref_window_start = datetime.strptime(args.ref_window_start, "%Y-%m-%d")
+        ref_window_end = datetime.strptime(args.ref_window_end, "%Y-%m-%d")
+        print('Using non default reference window: from', ref_window_start, ' to ', ref_window_end)
+
+        train_df, val_df, test_df = split_on_date(
+            merged_df,
+            [ref_window_start, ref_window_end],
+            col="StudyDate",
+        )
+
+    elif args.ref_window_start or args.ref_window_end:
+        raise ValueError("Both reference window start and end dates must be provided.")
+
+    else:
+        train_df, val_df, test_df = split_on_date(
+            merged_df,
+            [mgb_data.TRAIN_DATE_END, mgb_data.VAL_DATE_END],
+            col="StudyDate",
+        )
 
     #sampler = Sampler(args.sample_size, replacement=args.replacement)
     sampler = DummySampler(args.sample_size, replacement=args.replacement)
@@ -270,6 +285,9 @@ if __name__ == '__main__':
 
     parser.add_argument("--num_vae_features", type=int, default=128)
     parser.add_argument("--point_of_care", type=str, default=None)
+
+    parser.add_argument("--ref_window_start", type=str, default=None)
+    parser.add_argument("--ref_window_end", type=str, default=None)
 
     args = parser.parse_args()
 
