@@ -7,7 +7,15 @@ from typing import List
 
 import six
 
-from model_drift.drift import ChiSqDriftCalculator, KSDriftCalculator, TabularDriftCalculator, KSDriftCalculatorJackKnife, EMDDriftCalculatorJackKnife, ChiSqDriftCalculatorJackKnife
+from model_drift.drift import (
+    ChiSqDriftCalculator, 
+    KSDriftCalculator, 
+    TabularDriftCalculator, 
+    KSDriftCalculatorJackKnife, 
+    EMDDriftCalculatorJackKnife, 
+    ChiSqDriftCalculatorJackKnife, 
+    HellingerDriftCalculatorJackKnife
+)
 from model_drift.drift import HistIntersectionCalculator, KdeHistPlotCalculator
 
 
@@ -187,7 +195,8 @@ def mgb_default_config(dataframe, point_of_care, vae_cols=r"mu\..*", score_cols=
             #dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500), drilldown=True, group="metadata")
         elif col in metadata_cat_cols:
             #dwc.add_drift_stat(col, ChiSqDriftCalculator(), drilldown=False, group="metadata")
-            dwc.add_drift_stat(col, ChiSqDriftCalculatorJackKnife(), drilldown=False, group="metadata")
+            #dwc.add_drift_stat(col, ChiSqDriftCalculatorJackKnife(), drilldown=False, group="metadata")
+            dwc.add_drift_stat(col, HellingerDriftCalculatorJackKnife(), drilldown=False, group="metadata")
             #dwc.add_drift_stat(col, HistIntersectionCalculator(), drilldown=True, group="metadata")
 
     score_cols = match_keys(list(dataframe), score_cols)
