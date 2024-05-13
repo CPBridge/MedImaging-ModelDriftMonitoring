@@ -57,6 +57,9 @@ def basic_performance_plots(
 
     analysis_utils.create_performance_plots(df, output_dir)
 
+    analysis_utils.create_normalized_performance_plots(df, output_dir, ref_window_start, ref_window_end)
+
+
     # Unweighted MMC
     mmc_cols = [
         col for col in df.columns

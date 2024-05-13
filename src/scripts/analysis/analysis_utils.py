@@ -77,6 +77,54 @@ def create_performance_plots(df: pd.DataFrame, output_dir: Path):
     plt.savefig(os.path.join(output_dir, 'performance_combined.svg'), format='svg', bbox_inches='tight')  
     plt.close()
 
+def normalize_series(data, ref_start, ref_end):
+    """ Normalize the series data based on reference period mean and std """
+    # ref_start = datetime(2019, 11, 1, 0, 0)
+    reference_period = data.loc[ref_start:ref_end]
+    mean = reference_period.mean()
+    std = reference_period.std()
+    norm_result = (data - mean) / std
+    return norm_result
+
+def create_normalized_performance_plots(df: pd.DataFrame, output_dir: Path, ref_start: str, ref_end: str):
+    plt.style.use('ggplot')
+    date_col = tuple(f'Unnamed: 0_level_{i}' for i in range(4))
+    target_names = tuple(mgb_data.LABEL_GROUPINGS) + ('micro avg', 'macro avg')
+    num_cols = 2
+    num_rows = (len(target_names) + num_cols - 1) // num_cols
+
+    fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, num_rows * 5))
+    axs = axs.flatten()
+
+    for i, name in enumerate(target_names):
+        # Extract and normalize the series data
+        if not isinstance(df.index, pd.DatetimeIndex):
+            df.set_index(pd.to_datetime(df[date_col]), inplace=True)
+        auroc_series = df[('performance', name, 'auroc', 'mean')]
+        #f1_score_series = df[('performance', name, 'f1-score', 'mean')]
+        date_series = df[date_col]
+
+        normalized_auroc = normalize_series(auroc_series, ref_start, ref_end)
+        #normalized_f1_score = normalize_series(f1_score_series, ref_start, ref_end)
+
+        axs[i].plot(date_series, normalized_auroc, label='Normalized AUROC')
+        #axs[i].plot(date_series, normalized_f1_score, label='Normalized F1-Score')
+        axs[i].axhline(y=0, color='grey', linestyle='--', linewidth=1)  #
+        axs[i].set_title(name)
+        axs[i].legend()
+        axs[i].grid(True)
+        axs[i].tick_params(axis='x', rotation=45)
+        axs[i].set_xlim(pd.to_datetime('2019-10-01').date(), pd.to_datetime('2021-07-01').date())
+        axs[i].set_ylim(-3, 3)  # Adjust the y-axis limits for normalized data
+        axs[i].yaxis.set_major_locator(plt.MultipleLocator(0.5))
+
+    for j in range(i + 1, num_cols * num_rows):
+        axs[j].axis('off')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'normalized_performance_combined.png'))
+    plt.savefig(os.path.join(output_dir, 'normalized_performance_combined.svg'), format='svg', bbox_inches='tight')
+    plt.close()
 
 def create_mmc_plot(df, date_col, output_dir, title, col_plot = 'MMC', mmc_min = None, mmc_max = None):
     plt.style.use('ggplot')
