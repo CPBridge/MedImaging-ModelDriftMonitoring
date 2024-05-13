@@ -107,8 +107,13 @@ class EMDDriftCalculatorJackKnife(NumericBaseDriftCalculator):
         nref = len(self._ref)
         nobs = len(sample)
 
-        ref1 = np.random.choice(self._ref, nobs)
-        ref2 = np.random.choice(self._ref, nobs)
+        sample_tuples = sample.apply(tuple)
+        ref_tuples = self._ref.apply(tuple)
+        ref_tuples_exclusive = ref_tuples[~ref_tuples.isin(sample_tuples)]
+        ref_lists_exclusive = ref_tuples_exclusive.apply(list)
+
+        ref1 = np.random.choice(ref_lists_exclusive, nobs)
+        ref2 = np.random.choice(ref_lists_exclusive, nobs)
 
         sample_arr =  np.array(sample.tolist())
         sample_arr = np.nan_to_num(sample_arr, nan=0.0, posinf=0.0, neginf=0.0)
