@@ -5,7 +5,7 @@
 import numpy as np
 import pandas as pd
 from scipy.special import kolmogi
-from scipy.stats import ks_2samp
+from scipy.stats import ks_2samp, wasserstein_distance
 import ot
 
 from model_drift.drift.base import BaseDriftCalculator
@@ -84,7 +84,7 @@ class KSDriftCalculatorJackKnife(NumericBaseDriftCalculator):
         return out
 
 
-class EMDDriftCalculatorJackKnife(NumericBaseDriftCalculator):
+class EMDDriftCalculatorJackKnife_woRef(NumericBaseDriftCalculator):
     name = "emd_jackknife"
 
     def __init__(self, include_critical_value=False, **kwargs):
@@ -140,6 +140,38 @@ class EMDDriftCalculatorJackKnife(NumericBaseDriftCalculator):
  
         return out
 
+class EMDDriftCalculatorJackKnife_1D(NumericBaseDriftCalculator):
+    name = "emd_jackknife_1d"
+
+    def __init__(self, include_critical_value=False, **kwargs):
+        super().__init__(**kwargs)
+        self.include_critical_value = include_critical_value
+
+    def _predict(self, sample):
+        nref = len(self._ref)
+        nobs = len(sample)
+
+        ref1 = np.random.choice(self._ref, nobs)
+        ref2 = np.random.choice(self._ref, nobs)
+        out = {}
+        # drop NaNs from the arrays before computing the EMD
+        ref1 = ref1[~np.isnan(ref1)]
+        ref2 = ref2[~np.isnan(ref2)]
+        sample = sample[~np.isnan(sample)]
+        try:
+            dist1 = wasserstein_distance(ref1, sample)
+            dist2  = wasserstein_distance(ref1, ref2)
+
+            out["distance"] = max(dist1 - dist2, 0.0)
+            out['pval'] = float("NaN")
+
+        except TypeError:
+            out["distance"], out['pval'] = float("NaN"), float("NaN")
+
+        if self.include_critical_value:
+            raise NotImplementedError("Critical value not implemented for jackknife")
+ 
+        return out
 
 
 class BasicDriftCalculator(NumericBaseDriftCalculator):
