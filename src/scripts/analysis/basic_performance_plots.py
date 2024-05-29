@@ -235,6 +235,8 @@ def basic_performance_plots(
     analysis_utils.create_mmc_plot(mmc_df_weighted, date_col, output_dir, title='Weighted MMC with Range', mmc_min=mmc_df_min_weighted, mmc_max=mmc_df_max_weighted)
     analysis_utils.create_mmc_plot(mmc_df_weighted, date_col, output_dir, title='Weighted MMC')
 
+    analysis_utils.create_normalized_performance_plots_w_mmc(df, output_dir, ref_window_start, ref_window_end, mmc_df_weighted)
+
     # VAE features alone
     vae_df = df[vae_cols + [date_col]].copy()
     vae_ref_df = vae_df[(vae_df[date_col] >= ref_window_start) & (vae_df[date_col] <= ref_window_end)].copy()

@@ -79,7 +79,6 @@ def create_performance_plots(df: pd.DataFrame, output_dir: Path):
 
 def normalize_series(data, ref_start, ref_end):
     """ Normalize the series data based on reference period mean and std """
-    # ref_start = datetime(2019, 11, 1, 0, 0)
     reference_period = data.loc[ref_start:ref_end]
     mean = reference_period.mean()
     std = reference_period.std()
@@ -125,6 +124,56 @@ def create_normalized_performance_plots(df: pd.DataFrame, output_dir: Path, ref_
     plt.savefig(os.path.join(output_dir, 'normalized_performance_combined.png'))
     plt.savefig(os.path.join(output_dir, 'normalized_performance_combined.svg'), format='svg', bbox_inches='tight')
     plt.close()
+
+def create_normalized_performance_plots_w_mmc(df: pd.DataFrame, output_dir: Path, ref_start: str, ref_end: str, mmc_df: pd.DataFrame):
+    plt.style.use('ggplot')
+    date_col = tuple(f'Unnamed: 0_level_{i}' for i in range(4))
+    target_names = tuple(mgb_data.LABEL_GROUPINGS) + ('micro avg', 'macro avg')
+    num_cols = 2
+    num_rows = (len(target_names) + num_cols - 1) // num_cols
+
+    fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, num_rows * 5))
+    axs = axs.flatten()
+
+    for i, name in enumerate(target_names):
+        # Extract and normalize the series data
+        if not isinstance(df.index, pd.DatetimeIndex):
+            df.set_index(pd.to_datetime(df[date_col]), inplace=True)
+        auroc_series = df[('performance', name, 'auroc', 'mean')]
+        date_series = df.index
+
+        normalized_auroc = normalize_series(auroc_series, ref_start, ref_end)
+
+        ax1 = axs[i]
+        ax2 = ax1.twinx()  # Create a second y-axis
+
+        ax1.plot(date_series, normalized_auroc, label='Normalized AUROC', color='blue')
+        ax1.axhline(y=0, color='grey', linestyle='--', linewidth=1)
+        ax1.set_title(name)
+        ax1.grid(True)
+        ax1.tick_params(axis='x', rotation=45)
+        ax1.set_xlim(pd.to_datetime('2019-10-01').date(), pd.to_datetime('2021-07-01').date())
+        ax1.set_ylim(-3, 3)
+        ax1.yaxis.set_major_locator(plt.MultipleLocator(0.5))
+        ax1.set_ylabel('Normalized AUROC')
+
+        ax2.plot(date_series, mmc_df['mmc'], label='MMC', linestyle='--', color='orange')
+        ax2.set_ylim(min(mmc_df['mmc']), max(mmc_df['mmc']))
+        ax2.set_ylabel('MMC')
+
+        # Combine legends
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+
+    for j in range(i + 1, num_cols * num_rows):
+        axs[j].axis('off')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'normalized_performance_with_mmc_combined.png'))
+    plt.savefig(os.path.join(output_dir, 'normalized_performance_with_mmc_combined.svg'), format='svg', bbox_inches='tight')
+    plt.close()
+
 
 def create_mmc_plot(df, date_col, output_dir, title, col_plot = 'MMC', mmc_min = None, mmc_max = None):
     plt.style.use('ggplot')
