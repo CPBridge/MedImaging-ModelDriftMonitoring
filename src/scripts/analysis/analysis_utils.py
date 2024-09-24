@@ -1,26 +1,24 @@
-from pathlib import Path
-import pandas as pd
-
-import sys
+import json 
 import os
-sys.path.append('/autofs/homes/005/fd881/repos/MedImaging-ModelDriftMonitoring/')
+from pathlib import Path
+from datetime import datetime
 
-
-from src.model_drift.data import mgb_data
+import pandas as pd
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-import json
 import plotly.graph_objs as go
-from datetime import datetime
+import seaborn as sns
+
+from model_drift.data import mgb_data
+
 date_format = mdates.DateFormatter('%Y-%m')
 month_locator = mdates.MonthLocator(interval=3)
 plt.rcParams['svg.fonttype'] = 'none'
 
 
 
-def create_performance_plots(df: pd.DataFrame, output_dir: Path):
+def create_performance_plots(df: pd.DataFrame, output_dir: Path, ref_start: str, ref_end: str):
 
-    plt.style.use('ggplot')
     date_col = tuple(f'Unnamed: 0_level_{i}' for i in range(4))
     target_names = tuple(mgb_data.LABEL_GROUPINGS)
     target_names = target_names + ('micro avg', 'macro avg')
@@ -31,34 +29,64 @@ def create_performance_plots(df: pd.DataFrame, output_dir: Path):
     fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, num_rows * 5))
     axs = axs.flatten()  # Flatten the array of axes for easier indexing
 
+    # Define the date range to limit to reference and monitoring period
+    start_date = pd.to_datetime('2019-11-01')
+    end_date = pd.to_datetime('2021-07-01')
+
+    # Convert date_col to datetime and filter the DataFrame
+    df['date'] = pd.to_datetime(df[date_col])
+    df_filtered = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
+
     # Loop over each label name and plot data
     for i, name in enumerate(target_names):
         # Extract the required series from the DataFrame
-        auroc_series = df[('performance', name, 'auroc', 'mean')]
-        f1_score_series = df[('performance', name, 'f1-score', 'mean')]
-        date_series = df[date_col]
+        if not isinstance(df_filtered.index, pd.DatetimeIndex):
+            df_filtered.set_index(pd.to_datetime(df_filtered[date_col]), inplace=True)
+        auroc_series = df_filtered[('performance', name, 'auroc', 'mean')]
+        f1_score_series = df_filtered[('performance', name, 'f1-score', 'mean')]
+        date_series = df_filtered[date_col]
+
+        # Calculate the average AUROC during the monitoring period
+        avg_auroc = df_filtered[('performance', name, 'auroc', 'mean')].mean()        
+
+        _normalized_auroc, avg_auroc_ref, std_auroc_ref = normalize_series(auroc_series, ref_start, ref_end, return_mean_std=True)
+        
+        std_3_upper = avg_auroc_ref + 3 * std_auroc_ref
+        std_3_lower = avg_auroc_ref - 3 * std_auroc_ref
+
 
         # Plot each metric on its subplot
-        axs[i].plot(date_series, auroc_series, label='AUROC')
-        axs[i].plot(date_series, f1_score_series, label='F1-Score')
+        mask = (date_series >= ref_start) & (date_series <= ref_end)
+        axs[i].plot(date_series[~mask], auroc_series[~mask], label='AUROC', color='blue')
+        axs[i].plot(date_series[mask], auroc_series[mask], label='AUROC during reference period', color='cornflowerblue')
+        axs[i].axhline(y=avg_auroc_ref, color='gray', linestyle='--', label='Avg AUROC during Reference Window')
+        axs[i].fill_between(date_series, std_3_upper, std_3_lower, color='gray', alpha=0.35, label='3 Std Range of Reference Window')
+        #axs[i].plot(date_series, f1_score_series, label='F1-Score')
         axs[i].set_title(name) 
         axs[i].legend()
-        axs[i].grid(True)
+        axs[i].grid(False)
         axs[i].set_xlim(pd.to_datetime('2019-11-01').date(), pd.to_datetime('2021-07-01').date())
         axs[i].tick_params(axis='x', rotation=45)
-        axs[i].set_ylim(0, 1)
+        axs[i].set_ylim(0.7, 1)
+        axs[i].spines['top'].set_visible(False)
+        axs[i].spines['right'].set_visible(False)
         axs[i].yaxis.set_major_locator(plt.MultipleLocator(0.1))
 
         # Save each plot individually
         fig2, ax2 = plt.subplots(figsize=(10, 5))
-        ax2.plot(date_series, auroc_series, label='AUROC')
-        ax2.plot(date_series, f1_score_series, label='F1-Score')
+        mask = (date_series >= ref_start) & (date_series <= ref_end)
+        ax2.plot(date_series[~mask], auroc_series[~mask], label='AUROC', color='blue')
+        ax2.plot(date_series[mask], auroc_series[mask], label='AUROC during reference period', color='cornflowerblue')
+        ax2.axhline(y=avg_auroc_ref, color='gray', linestyle='--', label='Avg AUROC during Reference Window')
+        ax2.fill_between(date_series, std_3_upper, std_3_lower, color='gray', alpha=0.35, label='3 Std Range of Reference Window')        
         ax2.set_title(name)
         ax2.legend()
-        ax2.grid(True)
+        ax2.grid(False)
         ax2.set_xlim(pd.to_datetime('2019-11-01').date(), pd.to_datetime('2021-07-01').date())
         ax2.tick_params(axis='x', rotation=45)
-        ax2.set_ylim(0, 1)
+        ax2.set_ylim(0.7, 1)
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
         ax2.yaxis.set_major_locator(plt.MultipleLocator(0.1))
         plt.tight_layout()
         
@@ -77,16 +105,22 @@ def create_performance_plots(df: pd.DataFrame, output_dir: Path):
     plt.savefig(os.path.join(output_dir, 'performance_combined.svg'), format='svg', bbox_inches='tight')  
     plt.close()
 
-def normalize_series(data, ref_start, ref_end):
+def normalize_series(data, ref_start, ref_end, return_mean_std=False):
     """ Normalize the series data based on reference period mean and std """
     reference_period = data.loc[ref_start:ref_end]
     mean = reference_period.mean()
     std = reference_period.std()
     norm_result = (data - mean) / std
-    return norm_result
 
-def create_normalized_performance_plots(df: pd.DataFrame, output_dir: Path, ref_start: str, ref_end: str):
-    plt.style.use('ggplot')
+    if return_mean_std:
+        return norm_result, mean, std
+    else:
+        return norm_result
+
+def create_normalized_performance_plots(
+    df: pd.DataFrame, output_dir: Path, ref_start: str, ref_end: str, 
+    plot_start_date=pd.to_datetime('2019-11-01'), plot_end_date=pd.to_datetime('2021-07-01')
+):
     date_col = tuple(f'Unnamed: 0_level_{i}' for i in range(4))
     target_names = tuple(mgb_data.LABEL_GROUPINGS) + ('micro avg', 'macro avg')
     num_cols = 2
@@ -113,7 +147,7 @@ def create_normalized_performance_plots(df: pd.DataFrame, output_dir: Path, ref_
         axs[i].legend()
         axs[i].grid(True)
         axs[i].tick_params(axis='x', rotation=45)
-        axs[i].set_xlim(pd.to_datetime('2019-10-01').date(), pd.to_datetime('2021-07-01').date())
+        axs[i].set_xlim(plot_start_date.date(), plot_end_date.date())
         axs[i].set_ylim(-3, 3)  # Adjust the y-axis limits for normalized data
         axs[i].yaxis.set_major_locator(plt.MultipleLocator(0.5))
 
@@ -125,8 +159,11 @@ def create_normalized_performance_plots(df: pd.DataFrame, output_dir: Path, ref_
     plt.savefig(os.path.join(output_dir, 'normalized_performance_combined.svg'), format='svg', bbox_inches='tight')
     plt.close()
 
-def create_normalized_performance_plots_w_mmc(df: pd.DataFrame, output_dir: Path, ref_start: str, ref_end: str, mmc_df: pd.DataFrame):
-    plt.style.use('ggplot')
+def create_normalized_performance_plots_w_mmc(
+    df: pd.DataFrame, output_dir: Path, ref_start: str, ref_end: str, 
+    mmc_df: pd.DataFrame, plot_start_date=pd.to_datetime('2019-11-01'), 
+    plot_end_date=pd.to_datetime('2021-07-01')
+):
     date_col = tuple(f'Unnamed: 0_level_{i}' for i in range(4))
     target_names = tuple(mgb_data.LABEL_GROUPINGS) + ('micro avg', 'macro avg')
     num_cols = 2
@@ -152,7 +189,7 @@ def create_normalized_performance_plots_w_mmc(df: pd.DataFrame, output_dir: Path
         ax1.set_title(name)
         ax1.grid(True)
         ax1.tick_params(axis='x', rotation=45)
-        ax1.set_xlim(pd.to_datetime('2019-10-01').date(), pd.to_datetime('2021-07-01').date())
+        ax1.set_xlim(plot_start_date.date(), plot_end_date.date())
         ax1.set_ylim(-3, 3)
         ax1.yaxis.set_major_locator(plt.MultipleLocator(0.5))
         ax1.set_ylabel('Normalized AUROC')
@@ -174,32 +211,152 @@ def create_normalized_performance_plots_w_mmc(df: pd.DataFrame, output_dir: Path
     plt.savefig(os.path.join(output_dir, 'normalized_performance_with_mmc_combined.svg'), format='svg', bbox_inches='tight')
     plt.close()
 
+def create_joint_scatter_density_plots(df: pd.DataFrame, output_dir: Path, ref_start: str, ref_end: str, mmc_df: pd.DataFrame):
+    date_col = tuple(f'Unnamed: 0_level_{i}' for i in range(4))
+    target_names = tuple(mgb_data.LABEL_GROUPINGS) + ('micro avg', 'macro avg')
 
-def create_mmc_plot(df, date_col, output_dir, title, col_plot = 'MMC', mmc_min = None, mmc_max = None):
-    plt.style.use('ggplot')
+    plt.rc('axes', titlesize=16)     # Title font size
+    plt.rc('axes', labelsize=12)      # Axis label font size
+    plt.rc('xtick', labelsize=5)     # X-tick label font size
+    plt.rc('ytick', labelsize=5)     # Y-tick label font size
 
+    num_plots = len(target_names)
+    num_cols = 2
+    num_rows = (num_plots + num_cols - 1) // num_cols
+
+    fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, num_rows * 5))
+    axs = axs.flatten()
+
+    combined_data_list = []
+
+    for i, name in enumerate(target_names):
+        if not isinstance(df.index, pd.DatetimeIndex):
+            df.set_index(pd.to_datetime(df[date_col]), inplace=True)
+        
+        auroc_series = df[('performance', name, 'auroc', 'mean')]
+        normalized_auroc = normalize_series(auroc_series, ref_start, ref_end)
+
+        # Exclude all the dates before ref_end
+        normalized_auroc = normalized_auroc.loc[ref_end:]
+        mmc_df_ranged = mmc_df.loc[ref_end:]
+
+        # Combine the MMC and normalized AUROC data for saving
+        combined_data = pd.concat([mmc_df_ranged['mmc'], normalized_auroc], axis=1)
+        combined_data.columns = ['mmc', f'normalized_auroc_{name}']
+        combined_data_list.append(combined_data)
+
+        combined_data.index = pd.to_datetime(combined_data.index)
+        combined_data['date_category'] = combined_data.index >= pd.Timestamp('2020-03-16')
+
+        g = sns.jointplot(
+            data=combined_data,
+            x='mmc', y=f'normalized_auroc_{name}', hue='date_category',
+            kind="scatter",
+            legend=False,
+            joint_kws={'edgecolor':'w', 'linewidth':0.2},
+        )
+        #g.ax_joint.set_title(name, loc='left')
+        g.ax_joint.set_xlabel('MMC')
+        g.ax_joint.set_ylabel('Normalized AUROC')
+
+        # Add horizontal lines at +3 and -3
+        g.ax_joint.axhline(y=3, color='gray', linestyle='--')
+        g.ax_joint.axhline(y=-3, color='gray', linestyle='--')
+ 
+        # Add vertical line at x=10
+        g.ax_joint.axvline(x=10, color='gray', linestyle='-.')
+
+        if False: #name == 'cardiomegaly':
+            y_min, y_max = df[auroc_col].min(), df[auroc_col].max()
+            max_limit = max(abs(y_min), abs(y_max))
+            g.ax_joint.set_ylim([-max_limit, max_limit])
+        else:
+            g.ax_joint.set_ylim([-16, 16])
+
+        handles, labels = g.ax_joint.get_legend_handles_labels()
+        labels = ['Before March 16, 2020', 'After March 16, 2020']
+
+        if i == 0:
+            g.ax_joint.legend(labels, title='Date', loc='lower right')
+
+        g.fig.suptitle(name, x=0.5, y=0.95, ha='center', fontsize=16)
+        g.fig.subplots_adjust(top=0.9)  # Adjust to make room for the title
+
+        g.savefig(os.path.join(output_dir, f'{name}_KDE.svg'))
+        g.savefig(os.path.join(output_dir, f'{name}_KDE.png'), dpi=600)
+
+
+    # Concatenate all combined data into a single DataFrame
+    final_combined_data = pd.concat(combined_data_list, axis=1)
+
+    # Save the final combined data to CSV
+    final_combined_data.to_csv(os.path.join(output_dir, 'weighted_mmc_vs_performance_combined.csv'))
+
+    # Create Table for the out of spec MMC values
+    proportions = {}
+    for name in target_names:
+        df_prop = final_combined_data[[f'normalized_auroc_{name}', 'mmc']]
+        
+        # select rows where mmc is smaller than 10
+        df_prop_smaller = df_prop[df_prop['mmc'] < 10]
+        # calculate proportion where normalized_auroc is within [-3, 3] for mmc < 10
+        proportion_smaller = len(df_prop_smaller[(df_prop_smaller[f'normalized_auroc_{name}'] > -3) & (df_prop_smaller[f'normalized_auroc_{name}'] < 3)]) / len(df_prop_smaller)
+        
+        # select rows where mmc is larger than or equal to 10
+        df_prop_larger = df_prop[df_prop['mmc'] >= 10]
+        # calculate proportion where normalized_auroc is within [-3, 3] for mmc >= 10
+        proportion_larger = len(df_prop_larger[(df_prop_larger[f'normalized_auroc_{name}'] > -3) & (df_prop_larger[f'normalized_auroc_{name}'] < 3)]) / len(df_prop_larger)
+        
+        proportions[name] = (proportion_smaller, proportion_larger)
+
+    df_proportions = pd.DataFrame(proportions).T
+
+    # rename columns
+    df_proportions.columns = ['Proportion MMC < 10', 'Proportion MMC >= 10']
+    df_proportions = df_proportions.round(3)
+    df_proportions.to_csv(os.path.join(output_dir, 'weighted_mmc_vs_performance_combined_proportions.csv'))
+
+
+
+def create_mmc_plot(df, date_col, output_dir, title, col_plot='MMC', mmc_min=None, 
+                    mmc_max=None, plot_start_date=pd.to_datetime('2019-11-01'), 
+                    plot_end_date=pd.to_datetime('2021-07-01')):
+    plt.style.use('default')
 
     # Plot setup
     if mmc_min is None:
-        fig, ax = plt.subplots(figsize=(10, 6))  
-        ax.plot(df[date_col], df[col_plot.lower()], label=col_plot)  
+        fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')  
+        ax.plot(df[date_col], df[col_plot.lower()], label=col_plot, color='r')  
         
     else:
-        fig, ax = plt.subplots(figsize=(10, 6))  
-        ax.plot(df[date_col], df[col_plot.lower()], label=col_plot)  
+        fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')  
+        ax.plot(df[date_col], df[col_plot.lower()], label=col_plot, color='r')  
         ax.fill_between(df[date_col], mmc_min['mmc'], mmc_max['mmc'], alpha=0.5, label='MMC Range', color='gray')
 
     ax.set_title(title)  
     ax.set_xlabel('Date')  
     ax.set_ylabel(col_plot)  
-    ax.grid(True)  
+    ax.grid(False)  
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     ax.legend()  
-    ax.set_xlim(pd.to_datetime('2019-11-01').date(), pd.to_datetime('2021-07-01').date())  
+    ax.set_xlim(plot_start_date.date(), plot_end_date.date())  
     ax.tick_params(axis='x', rotation=45)  
 
     # Save the plot
-    plt.savefig(output_dir / f'{title.lower().replace(" ", "_")}.png')
+    plt.savefig(output_dir / f'{title.lower().replace(" ", "_")}.png', dpi=600)
     plt.savefig(output_dir / f'{title.lower().replace(" ", "_")}.svg', format='svg', bbox_inches='tight')
+    # Save the plot data as a CSV
+    plot_data = pd.DataFrame({
+        'date': df[date_col],
+        col_plot.lower(): df[col_plot.lower()]
+    })
+
+    if mmc_min is not None and mmc_max is not None:
+        plot_data['mmc_min'] = mmc_min['mmc']
+        plot_data['mmc_max'] = mmc_max['mmc']
+
+    plot_data.to_csv(output_dir / f'{title.lower().replace(" ", "_")}.csv', index=False)
     plt.close()  
 
 def parse_date(filename):

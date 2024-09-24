@@ -1,23 +1,20 @@
-from email import utils
-from pathlib import Path
-import pandas as pd
-import sys
+import json
+import logging
 import os
-sys.path.append('/autofs/homes/005/fd881/repos/MedImaging-ModelDriftMonitoring/')
-sys.path.append('/home/fd881/repos/MedImaging-ModelDriftMonitoring/')
+import sys
 from datetime import datetime
-
+from pathlib import Path
 
 import click
-import json
-from pycrumbs import tracked
-
-from src.model_drift.data import mgb_data
-from src.scripts.analysis import analysis_utils
-import numpy as np
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from pycrumbs import tracked
 from tqdm import tqdm
+
+from scripts.analysis import analysis_utils
+
 date_format = mdates.DateFormatter('%Y-%m')
 month_locator = mdates.MonthLocator(interval=3)
 plt.rcParams['svg.fonttype'] = 'none'
@@ -27,27 +24,62 @@ plt.rcParams['svg.fonttype'] = 'none'
 @click.command()
 @click.argument('drift-csv-path', type=Path)
 @click.argument('output-dir', type=Path)
+@click.option('--window-length', type=str, default='30D')
+@click.option(
+    '--equal-weights', 
+    type=bool, 
+    default=True, 
+    help=(
+        'If true, the VAE, score, and metadata metrics are weighted equally. '
+        'The correlation weights are only used to weight within the different '
+        'metadata values.'
+    )
+)
 @tracked(directory_parameter='output_dir')
 def basic_performance_plots(
         drift_csv_path: Path,
         output_dir: Path,
+        window_length: str = '30D',
+        equal_weights: bool = True
 ):
     """Makes some basic performance against time plots from a drift CSV."""
+
+    # Setup output directory
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Setup logging
+    log_file_path = os.path.join(output_dir, 'plotting_log.log')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.FileHandler(log_file_path), logging.StreamHandler(sys.stdout)])
+    logging.info(f"Saving plots to {output_dir}")
+
+
     df = pd.read_csv(drift_csv_path, header=[0, 1, 2, 3])
+    logging.info(f"Loaded drift CSV from: {drift_csv_path}")
 
     # load the raw file with all exams in reference window to get the start and end dates
     ref_csv = pd.read_csv(str(drift_csv_path).replace('output.csv', 'ref.csv'))
+    logging.info(f"Loaded reference CSV from: {str(drift_csv_path).replace('output.csv', 'ref.csv')}")
     ref_window_start_str = ref_csv["StudyDate"].min()
     ref_window_end_str = ref_csv["StudyDate"].max()
     ref_window_start = datetime.strptime(ref_window_start_str, "%Y-%m-%d")
     ref_window_end = datetime.strptime(ref_window_end_str, "%Y-%m-%d")
 
-    is_emd = 'emd' in str(drift_csv_path)
-    
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Convert window length string in days to month float
+    try:
+        window_length_days = int(window_length.rstrip('D'))
+    except ValueError as e:
+        raise ValueError(f"{e} Note: only integer days are supported for window length.")
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {e}")
+        raise
 
-    # The date column gets read in with a stupid name
+    # add window_length to the ref_window_start to account for the overlap with the period before (1 window length into
+    # the reference window is the first day where only days that are actually within the reference window are included)
+    ref_window_start = ref_window_start + pd.DateOffset(days=window_length_days)
+
+
+    # The date column gets read in with a strange name
     date_col = tuple(f'Unnamed: 0_level_{i}' for i in range(4))
     performance_col = ('performance', 'micro avg', 'auroc', 'mean')
 
@@ -55,8 +87,7 @@ def basic_performance_plots(
     df[date_col] = pd.to_datetime(df[date_col])
 
 
-    analysis_utils.create_performance_plots(df, output_dir)
-
+    analysis_utils.create_performance_plots(df, output_dir, ref_window_start, ref_window_end)
     analysis_utils.create_normalized_performance_plots(df, output_dir, ref_window_start, ref_window_end)
 
 
@@ -128,17 +159,19 @@ def basic_performance_plots(
         c_max = tuple(c_list)
         mmc_df_max[c_max] = (mmc_df_max[c_max] - ref_df[c].mean()) / (ref_df[c].std() + 1e-6)
 
-    mmc_df['mmc'] = mmc_df.mean(axis=1)
-    mmc_df_min['mmc'] = mmc_df_min.mean(axis=1)
-    mmc_df_max['mmc'] = mmc_df_max.mean(axis=1)
+    mmc_df['mmc'] = mmc_df.mean(axis=1, numeric_only=True)
+    mmc_df_min['mmc'] = mmc_df_min.mean(axis=1, numeric_only=True)
+    mmc_df_max['mmc'] = mmc_df_max.mean(axis=1, numeric_only=True)
 
 
     analysis_utils.create_mmc_plot(mmc_df, date_col, output_dir, title='Unweighted MMC with Range', mmc_min=mmc_df_min, mmc_max=mmc_df_max)
     analysis_utils.create_mmc_plot(mmc_df, date_col, output_dir, title='Unweighted MMC')
 
+    #TODO: These plots currently use the unweighted MMC, but are not used in the paper
+    analysis_utils.create_normalized_performance_plots_w_mmc(df, output_dir, ref_window_start, ref_window_end, mmc_df)
 
-    if is_emd:
-        #  For runs with EMD, we will weight each drift compoment (metadata, vae, activations) as 1/3. Within the metadat we are still weighting according to correlation with performance
+    if equal_weights:
+        #  For runs in the paper, we will weight each drift compoment (metadata, vae, activations) as 1/3. Within the metadata we are still weighting according to correlation with performance
         correlation_matrix = ref_df_weights[metadata_cols + [performance_col]].corr()
         performance_correlation = correlation_matrix[performance_col]
         performance_correlation_df = pd.DataFrame(performance_correlation)
@@ -158,14 +191,15 @@ def basic_performance_plots(
         weights = {metric: (0 if np.isnan(weight) else weight) for metric, weight in weights.items()}
 
         # normalize and take negative value. Note: Here the weights should sum to 1/3, as we will be adding the vae and scores each with 1/3 as well
-        weights = {metric: (-1/3) * weight / (sum(weights.values())) for metric, weight in weights.items()}
+        weights = {metric: (1/3) * weight / (sum(weights.values())) for metric, weight in weights.items()}
 
         # add weight for vae and score
-        weights['full_mu'] = -1/3
-        weights['activation'] = -1/3
+        weights['full_mu'] = 1/3
+        weights['activation'] = 1/3
+
+        logging.info(f'Equal weighting was used. Weights: {weights}')
 
     else:
-
         # Weighted MMC
         correlation_matrix = ref_df_weights.corr()
 
@@ -188,13 +222,16 @@ def basic_performance_plots(
         weights = {metric: (0 if np.isnan(weight) else weight) for metric, weight in weights.items()}
 
         # normalize and take negative value -> should that be applied before?
-        weights = {metric: (-1) * weight / sum(weights.values()) for metric, weight in weights.items()}
+        weights = {metric: (1) * weight / sum(weights.values()) for metric, weight in weights.items()}
+
+        logging.info(f'Correlation weighting was used for all metrics. Weights: {weights}')
 
 
     # save weights for future reference
     with open(os.path.join(output_dir, 'correlation_weights.json'), 'w') as f:
         json.dump(weights, f)
 
+    # Create weighted MMC dataframes
     mmc_df_weighted = mmc_df.copy()
     mmc_df_min_weighted = mmc_df_min.copy()
     mmc_df_max_weighted = mmc_df_max.copy()
@@ -204,14 +241,14 @@ def basic_performance_plots(
     mmc_df_max_weighted.drop(columns=["mmc"], inplace=True)
 
 
-        
+    # Apply weights to the MMC dataframes
     for col in mmc_df_weighted.columns:
         metric_name = [metric for metric in col if metric in weights]
         if metric_name:
             mmc_df_weighted[col] = mmc_df_weighted[col] * weights[metric_name[0]]
 
         else:
-            print(f"Column {col} does not match any metric name in the weights dictionary")
+            logging.warning(f"Column {col} does not match any metric name in the weights dictionary")
     mmc_df_weighted['mmc'] = mmc_df_weighted.sum(axis=1)
 
     for col in mmc_df_min_weighted.columns:
@@ -220,7 +257,7 @@ def basic_performance_plots(
             mmc_df_min_weighted[col] = mmc_df_min_weighted[col] * weights[metric_name[0]]
 
         else:
-            print(f"Column {col} does not match any metric name in the weights dictionary")
+            logging.warning(f"Column {col} does not match any metric name in the weights dictionary")
     mmc_df_min_weighted['mmc'] = mmc_df_min_weighted.sum(axis=1)
 
     for col in mmc_df_max_weighted.columns:
@@ -229,53 +266,38 @@ def basic_performance_plots(
             mmc_df_max_weighted[col] = mmc_df_max_weighted[col] * weights[metric_name[0]]
 
         else:
-            print(f"Column {col} does not match any metric name in the weights dictionary")
+            logging.warning(f"Column {col} does not match any metric name in the weights dictionary")
     mmc_df_max_weighted['mmc'] = mmc_df_max_weighted.sum(axis=1)
 
+    # Create plots for weighted MMC
     analysis_utils.create_mmc_plot(mmc_df_weighted, date_col, output_dir, title='Weighted MMC with Range', mmc_min=mmc_df_min_weighted, mmc_max=mmc_df_max_weighted)
     analysis_utils.create_mmc_plot(mmc_df_weighted, date_col, output_dir, title='Weighted MMC')
+    analysis_utils.create_joint_scatter_density_plots(df, output_dir, ref_window_start, ref_window_end, mmc_df_weighted)
 
-    analysis_utils.create_normalized_performance_plots_w_mmc(df, output_dir, ref_window_start, ref_window_end, mmc_df_weighted)
-
-    # VAE features alone
-    vae_df = df[vae_cols + [date_col]].copy()
-    vae_ref_df = vae_df[(vae_df[date_col] >= ref_window_start) & (vae_df[date_col] <= ref_window_end)].copy()
-
-    for c in vae_cols:
-        vae_df[c] = (vae_df[c] - vae_ref_df[c].mean()) / vae_ref_df[c].std()
-
-    vae_df['mean_vae_distance'] = vae_df[vae_cols].mean(axis=1)
+    # Create plots for VAE features alone, using the weighted values
+    vae_df = mmc_df_weighted[vae_cols + [date_col]].copy()
+    vae_df['mean_vae_distance'] = vae_df[vae_cols].sum(axis=1)
 
     analysis_utils.create_mmc_plot(vae_df, date_col, output_dir, title='VAE', col_plot='mean_vae_distance')
 
-    # Score features alone
-    score_df = df[score_cols + [date_col]].copy()
-    score_ref_df = score_df[(score_df[date_col] >= ref_window_start) & (score_df[date_col] <= ref_window_end)].copy()
-
-    for c in score_cols:
-        score_df[c] = (score_df[c] - score_ref_df[c].mean()) / score_ref_df[c].std()
-
-    score_df['mean_activation_distance'] = score_df[score_cols].mean(axis=1)
+    # Create plots for activation features alone, using the weighted values
+    score_df = mmc_df_weighted[score_cols + [date_col]].copy()
+    score_df['mean_activation_distance'] = score_df[score_cols].sum(axis=1)
 
     analysis_utils.create_mmc_plot(score_df, date_col, output_dir, title='Score', col_plot='mean_activation_distance')
 
-    # Metadata features alone
-    metadata_df = df[metadata_cols + [date_col]].copy()
-    metadata_ref_df = metadata_df[(metadata_df[date_col] >= ref_window_start) & (metadata_df[date_col] <= ref_window_end)].copy()
-
-    for c in metadata_cols:
-        metadata_df[c] = (metadata_df[c] - metadata_ref_df[c].mean()) / metadata_ref_df[c].std()
-
-    metadata_df['mean_metadata_distance'] = metadata_df[metadata_cols].mean(axis=1)
+    # Create plots for Metadata features alone, using the weighted values
+    metadata_df = mmc_df_weighted[metadata_cols + [date_col]].copy()
+    metadata_df['mean_metadata_distance'] = metadata_df[metadata_cols].sum(axis=1)
 
     analysis_utils.create_mmc_plot(metadata_df, date_col, output_dir, title='Metadata', col_plot='mean_metadata_distance')
 
 
     # Create Histograms for the drilldown features if present
-
     dirname = os.path.dirname(drift_csv_path)
     base_path_drilldown = os.path.join(dirname, 'history')
 
+    #Load one example date json to get the keys, needs to be adjusted if using a different dataset
     date_json = os.path.join(base_path_drilldown, '2019-10-10.json')
     with open(date_json, 'r') as f:
         data = json.load(f)
@@ -288,7 +310,7 @@ def basic_performance_plots(
         for feature in tqdm(keys, desc="Creating Histograms"):
             analysis_utils.plot_hist_feature(feature, basepath = base_path_drilldown, output_dir=output_dir_hist)
     else: 
-        print("There is no drilldown data present so no histograms could be created")
+        logging.info("There is no drilldown data present so no histograms could be created")
 
 
 if __name__ == "__main__":
