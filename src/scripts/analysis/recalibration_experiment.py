@@ -12,7 +12,7 @@ import click
 @click.argument('output-dir', type=Path)
 @click.option('--recalibration-reference-start', default='2020-10-01', type=str, help='Start date of the recalibration reference period in YYYY-MM-DD format')
 @click.option('--recalibration-reference-end', default='2021-01-01', type=str, help='End date of the recalibration reference period in YYYY-MM-DD format')
-@tracked(directory_parameter='output-dir')
+@tracked(directory_parameter='output_dir')
 def main(
     original_mmc_path: Path,
     recalibrated_mmc_path: Path,
