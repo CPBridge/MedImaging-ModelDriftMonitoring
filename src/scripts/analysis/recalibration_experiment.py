@@ -5,11 +5,15 @@ import matplotlib.pyplot as plt
 from pycrumbs import tracked
 import click
 
+# Make sure that text will be editable in svg
+plt.rcParams['svg.fonttype'] = 'none'
 
 @click.command()
 @click.argument('original-mmc-path', type=Path)
 @click.argument('recalibrated-mmc-path', type=Path)
 @click.argument('output-dir', type=Path)
+@click.option('--initial-reference-start', default='2019-10-01', type=str, help='Start date of the initial reference period in YYYY-MM-DD format')
+@click.option('--window-length', type=str, default='30D')
 @click.option('--recalibration-reference-start', default='2020-10-01', type=str, help='Start date of the recalibration reference period in YYYY-MM-DD format')
 @click.option('--recalibration-reference-end', default='2021-01-01', type=str, help='End date of the recalibration reference period in YYYY-MM-DD format')
 @tracked(directory_parameter='output_dir')
@@ -17,9 +21,25 @@ def main(
     original_mmc_path: Path,
     recalibrated_mmc_path: Path,
     output_dir: Path,
+    initial_reference_start: str,
+    window_length: str,
     recalibration_reference_start: str,
     recalibration_reference_end: str,
 ):
+
+    # Convert window length string in days to month float
+    try:
+        window_length_days = int(window_length.rstrip('D'))
+    except ValueError as e:
+        raise ValueError(f"{e} Note: only integer days are supported for window length.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        raise
+
+    # add window_length to the ref_window_start to account for the overlap with the period before (1 window length into
+    # the reference window is the first day where only days that are actually within the reference window are included)
+    initial_reference_start = pd.to_datetime(initial_reference_start) + pd.DateOffset(days=window_length_days)
+
     df_mmc = pd.read_csv(original_mmc_path)
     df_mmc_recal = pd.read_csv(recalibrated_mmc_path)
 
@@ -52,11 +72,12 @@ def main(
     ax.set_title('MMC Recalibration')
     ax.set_xlabel('Date')
     ax.set_ylabel('MMC')
-    ax.set_xlim(pd.to_datetime(recalibration_reference_start).date(), pd.to_datetime(recalibration_reference_end).date())
+    ax.set_xlim(initial_reference_start.date(), df_mmc_combined.index.max().date())
     ax.tick_params(axis='x', rotation=45)
 
     # save the plot in the output directory
     plt.savefig(output_dir / 'weighted_mmc_with_range_recalibration.png', dpi=600)
+    plt.savefig(output_dir / 'weighted_mmc_with_range_recalibration.svg', format='svg', bbox_inches='tight')
     plt.close()
 
 if __name__ == '__main__':
