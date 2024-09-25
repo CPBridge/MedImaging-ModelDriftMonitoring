@@ -227,7 +227,8 @@ def create_joint_scatter_density_plots(df: pd.DataFrame, output_dir: Path, ref_s
     fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, num_rows * 5))
     axs = axs.flatten()
 
-    combined_data_list = []
+    # Initialize the final combined data with the MMC column
+    final_combined_data = mmc_df.loc[ref_end:, ['mmc']]
 
     for i, name in enumerate(target_names):
         if not isinstance(df.index, pd.DatetimeIndex):
@@ -238,12 +239,13 @@ def create_joint_scatter_density_plots(df: pd.DataFrame, output_dir: Path, ref_s
 
         # Exclude all the dates before ref_end
         normalized_auroc = normalized_auroc.loc[ref_end:]
-        mmc_df_ranged = mmc_df.loc[ref_end:]
 
-        # Combine the MMC and normalized AUROC data for saving
-        combined_data = pd.concat([mmc_df_ranged['mmc'], normalized_auroc], axis=1)
+        # Add the normalized AUROC for this target to the final combined data
+        final_combined_data[f'normalized_auroc_{name}'] = normalized_auroc
+
+        # Create combined_data for this iteration (for plotting)
+        combined_data = pd.concat([final_combined_data['mmc'], normalized_auroc], axis=1)
         combined_data.columns = ['mmc', f'normalized_auroc_{name}']
-        combined_data_list.append(combined_data)
 
         combined_data.index = pd.to_datetime(combined_data.index)
         combined_data['date_category'] = combined_data.index >= pd.Timestamp('2020-03-16')
@@ -286,9 +288,6 @@ def create_joint_scatter_density_plots(df: pd.DataFrame, output_dir: Path, ref_s
         g.savefig(os.path.join(output_dir, f'{name}_KDE.png'), dpi=600)
 
 
-    # Concatenate all combined data into a single DataFrame
-    final_combined_data = pd.concat(combined_data_list, axis=1)
-
     # Save the final combined data to CSV
     final_combined_data.to_csv(os.path.join(output_dir, 'weighted_mmc_vs_performance_combined.csv'))
 
@@ -300,13 +299,18 @@ def create_joint_scatter_density_plots(df: pd.DataFrame, output_dir: Path, ref_s
         # select rows where mmc is smaller than 10
         df_prop_smaller = df_prop[df_prop['mmc'] < 10]
         # calculate proportion where normalized_auroc is within [-3, 3] for mmc < 10
-        proportion_smaller = len(df_prop_smaller[(df_prop_smaller[f'normalized_auroc_{name}'] > -3) & (df_prop_smaller[f'normalized_auroc_{name}'] < 3)]) / len(df_prop_smaller)
-        
+        if len(df_prop_smaller) > 0:
+            proportion_smaller = len(df_prop_smaller[(df_prop_smaller[f'normalized_auroc_{name}'] > -3) & (df_prop_smaller[f'normalized_auroc_{name}'] < 3)]) / len(df_prop_smaller)
+        else:
+            proportion_smaller = 0
+
         # select rows where mmc is larger than or equal to 10
         df_prop_larger = df_prop[df_prop['mmc'] >= 10]
         # calculate proportion where normalized_auroc is within [-3, 3] for mmc >= 10
-        proportion_larger = len(df_prop_larger[(df_prop_larger[f'normalized_auroc_{name}'] > -3) & (df_prop_larger[f'normalized_auroc_{name}'] < 3)]) / len(df_prop_larger)
-        
+        if len(df_prop_larger) > 0:
+            proportion_larger = len(df_prop_larger[(df_prop_larger[f'normalized_auroc_{name}'] > -3) & (df_prop_larger[f'normalized_auroc_{name}'] < 3)]) / len(df_prop_larger)
+        else:
+            proportion_larger = 0
         proportions[name] = (proportion_smaller, proportion_larger)
 
     df_proportions = pd.DataFrame(proportions).T
