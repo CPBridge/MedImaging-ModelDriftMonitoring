@@ -23,11 +23,11 @@ def create_performance_plots(df: pd.DataFrame, output_dir: Path, ref_start: str,
     target_names = tuple(mgb_data.LABEL_GROUPINGS)
     target_names = target_names + ('micro avg', 'macro avg')
     num_cols = 2
-    num_rows = (len(target_names) + num_cols - 1) // num_cols  # This ensures you have enough rows
+    num_rows = (len(target_names) + num_cols - 1) // num_cols 
 
-    # Create a figure and an array of axes
+    # Create a figure and flatten axs for indexing
     fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, num_rows * 5))
-    axs = axs.flatten()  # Flatten the array of axes for easier indexing
+    axs = axs.flatten() 
 
     # Define the date range to limit to reference and monitoring period
     start_date = pd.to_datetime('2019-11-01')
@@ -387,7 +387,7 @@ def plot_hist_feature(feature, basepath, output_dir):
     all_categories = sorted(all_categories)
     
 
-    #make a figure and add the traces for histogram and kde
+    # Make a figure and add the traces for histogram and kde
     fig = go.Figure()
     max_y_value = 0
     trace_counter = 0
