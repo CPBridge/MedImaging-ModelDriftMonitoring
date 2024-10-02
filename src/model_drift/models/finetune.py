@@ -10,16 +10,18 @@ from torchmetrics import AUROC, MetricCollection
 from torchvision import models
 
 from .base import VisionModuleBase
+from model_drift.data.datamodules import MGBCXRDataModule
+
 
 
 class CheXFinetune(VisionModuleBase):
     def __init__(
             self,
             pretrained=None,
-            num_classes=10,
+            num_classes=9,
             learning_rate=0.001,
             step_size=7,
-            gamma=0.1,
+            gamma=1,
             freeze_backbone=False,
             labels=None,
             params=None,
@@ -33,7 +35,9 @@ class CheXFinetune(VisionModuleBase):
 
         self.save_hyperparameters()
 
-        model = models.densenet121(pretrained=bool(pretrained))
+        model = models.densenet121(weights=models.DenseNet121_Weights.DEFAULT)
+
+
         if pretrained:
             # Load pre-trained CheXpert model to be fine-tuned
             model.classifier.weight = torch.nn.Parameter(torch.randn(14, 1024))
@@ -63,6 +67,8 @@ class CheXFinetune(VisionModuleBase):
         num_ftrs = model.classifier.in_features
         self.backbone = model
         self.backbone.classifier = nn.Linear(num_ftrs, num_classes)
+
+
         self.activation = nn.Sigmoid()
         self.criterion = nn.BCELoss()
 
@@ -71,7 +77,7 @@ class CheXFinetune(VisionModuleBase):
                 # Accuracy(num_classes=num_classes, average='none'),
                 # Recall(num_classes=num_classes, average="none"),
                 # Specificity(num_classes=num_classes, average="none"),
-                AUROC(num_classes=num_classes, average=None, compute_on_step=False),
+                AUROC(num_classes=num_classes, average=None, compute_on_step=True), #changed to True
             ],
             prefix="val/",
         )
@@ -104,6 +110,7 @@ class CheXFinetune(VisionModuleBase):
     def on_validation_epoch_end(self) -> None:
         metrics = {}
         for k, v in self.val_metrics.compute().items():
+
             if len(v) > 1:
                 metrics[f"{k}.mean"] = v.mean()
                 if len(v) == len(self.labels):
@@ -121,46 +128,26 @@ class CheXFinetune(VisionModuleBase):
         raw_scores = self.forward(images)
         return raw_scores, self.activation(raw_scores)
 
-    # def train_dataloader(self):
-    #     dataset = PadChestDataset(
-    #         self.data_folder,
-    #         self.train_csv,
-    #         IMAGE_SIZE,
-    #         True,
-    #         channels=CHANNELS,
-    #     )
-    #     return DataLoader(
-    #         dataset=dataset,
-    #         batch_size=self.batch_size,
-    #         shuffle=True,
-    #         num_workers=self.num_workers,
-    #         pin_memory=True,
-    #     )
-    #
-    # def val_dataloader(self):
-    #     dataset = PadChestDataset(
-    #         self.data_folder,
-    #         self.val_csv,
-    #         IMAGE_SIZE,
-    #         True,
-    #         channels=CHANNELS,
-    #     )
-    #
-    #     return DataLoader(
-    #         dataset=dataset,
-    #         batch_size=self.batch_size,
-    #         shuffle=False,
-    #         num_workers=self.num_workers,
-    #         pin_memory=True,
-    #     )
-
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
             params=list(filter(lambda p: p.requires_grad, self.parameters())),
             lr=self.learning_rate,
+            weight_decay=0.001,
         )
-        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=self.gamma)
-        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="max",
+            )
+        lr_scheduler_config = {
+            "scheduler": scheduler,
+            "interval": "epoch",
+            "frequency": 1,
+            "monitor": "val/AUROC.mean",
+            "strict": True,
+            "name": None,
+        }
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
 
     @classmethod
     def add_model_args(cls, parser):
@@ -170,16 +157,16 @@ class CheXFinetune(VisionModuleBase):
             "--pretrained", type=str, dest="pretrained", help="model to fine tune from",
             default=None, )
         group.add_argument(
-            "--num_classes", type=int, dest="num_classes", help="number of output classes", default=10, )
+            "--num_classes", type=int, dest="num_classes", help="number of output classes", default=9, )
 
         group = parser.add_argument_group("optimization")
         group.add_argument(
             "--learning_rate", type=float, dest="learning_rate", help="base learning rate", default=1e-3, )
         group.add_argument(
-            "--freeze_backbone", type=int, dest="freeze_backbone", help="freeze_backbone", default=0, )
+            "--freeze_backbone", type=int, dest="freeze_backbone", help="freeze_backbone", default=0)
         group.add_argument(
             "--weight_decay", type=float, dest="weight_decay", help="weight decay for optimizer", default=1e-5, )
-        group.add_argument("--gamma", type=float, dest="gamma", default=0.1,
+        group.add_argument("--gamma", type=float, dest="gamma", default=1,
                            help="reduction factor for lr scheduler"
                                 "if reduce on plateau is used, this value is used for 'factor'")
         group.add_argument("--step_size", type=int, dest="step_size",

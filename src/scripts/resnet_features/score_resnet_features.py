@@ -19,14 +19,14 @@ if library_path not in PYPATH:
 
 import model_drift.azure_utils
 from model_drift import helpers
-from model_drift.models.finetune import CheXFinetune
+from model_drift.models.resnet_features import Resnet_Features
 from model_drift.data.datamodules import (
     PadChestDataModule,
     PediatricCheXpertDataModule,
     MIDRCDataModule,
     MGBCXRDataModule,
 )
-from model_drift.callbacks import ClassifierPredictionWriter
+from model_drift.callbacks import ResNetFeaturePredictionWriter
 from model_drift.data.transform import VisionTransformer
 
 
@@ -41,17 +41,16 @@ data_modules = {
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, dest="model", help="path to model or registered model name")
-    parser.add_argument("--run_azure", type=int, dest="run_azure", help="run in AzureML", default=0)
     parser.add_argument("--output_dir", type=str, dest="output_dir", help="output_dir", default="outputs")
 
     parser.add_argument("--dataset", type=str, dest="dataset", help="dataset", choices=list(data_modules),
                         default='padchest')
     temp_args, _ = parser.parse_known_args()
-    dm_cls = data_modules[temp_args.dataset]
-    parser = dm_cls.add_argparse_args(parser)
+    #dm_cls = data_modules[temp_args.dataset]
+    #parser = dm_cls.add_argparse_args(parser)
     parser = pl.Trainer.add_argparse_args(parser)
-
+    parser = MGBCXRDataModule.add_argparse_args(parser)
+    parser = VisionTransformer.add_argparse_args(parser)
     args = parser.parse_args()
     score(output_dir=args.output_dir, args=args)
 
@@ -85,17 +84,16 @@ def score(output_dir: str, args):
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    if args.run_azure:
-        args.model = model_drift.azure_utils.download_model_azure(args.model, args.output_dir)
 
     args.default_root_dir = args.output_dir
 
-    model = CheXFinetune.load_from_checkpoint(args.model, pretrained=None)
-    transformer = VisionTransformer.from_argparse_args(Namespace(), **model.hparams.params)
+    model = Resnet_Features()
+    transformer = VisionTransformer.from_argparse_args(args)
 
-    dm_cls = data_modules[args.dataset]
-    dm = dm_cls.from_argparse_args(args, transforms=transformer.val_transform)
-    writer = ClassifierPredictionWriter(args.output_dir)
+    #dm_cls = data_modules[args.dataset]
+    #dm = dm_cls.from_argparse_args(args, transforms=transformer.val_transform)
+    dm = MGBCXRDataModule.from_argparse_args(args, transforms=transformer.val_transform)
+    writer = ResNetFeaturePredictionWriter(args.output_dir)
 
     if args.num_workers < 0:
         args.num_workers = num_cpus

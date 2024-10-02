@@ -24,3 +24,23 @@ class Sampler(object):
     def sample_iterator(self, sample, n_samples=1, stratify=None):
         for _ in range(n_samples):
             yield self.sample(sample, stratify=stratify)
+
+class DummySampler(object):
+    """
+    This is a dummy sampler that mimics the behavior of the Sampler class, but does
+    not perform any samples and instead returns the indicies unchanged. This is used
+    for the JackKnife resampling, in which the reference dataframe is resampled in the 
+    metric itself and the sliding window sample is not resampled at all. In this case 
+    we still want to create multiple copies of the sample window. 
+    """
+    def __init__(self, sample_size=0, replacement=True, random_state=None):
+        # These variables are all dummy variables, just kept for future
+        # compatibility. 
+        self.sample_size = sample_size
+        self.replacement = replacement
+        self.random_state = random_state
+
+    def sample_iterator(self, indices, n_samples=1, stratify=None):
+      
+        for _ in range(n_samples):
+            yield indices

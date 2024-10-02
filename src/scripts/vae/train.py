@@ -20,7 +20,7 @@ if library_path not in PYPATH:
 from model_drift.callbacks import IOMonitor
 from model_drift.models.vae import VAE
 from model_drift.azure_utils import get_azure_logger
-from model_drift.data.datamodules import PadChestDataModule, CheXpertDataModule
+from model_drift.data.datamodules import PadChestDataModule, CheXpertDataModule, MGBCXRDataModule
 from model_drift.data.transform import VisionTransformer
 
 num_gpus = torch.cuda.device_count()
@@ -46,13 +46,13 @@ print("=" * 5)
 print()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", type=str, dest="dataset", help="dataset to train on", default="chexpert",
-                    choices=['chexpert', 'padchest'])
+parser.add_argument("--dataset", type=str, dest="dataset", help="dataset to train on", default="mgb",
+                    choices=['chexpert', 'padchest', 'mgb'])
 known_args, _ = parser.parse_known_args()
 
 print(known_args)
 
-datasets = {"padchest": PadChestDataModule, "chexpert": CheXpertDataModule}
+datasets = {"padchest": PadChestDataModule, "chexpert": CheXpertDataModule, "mgb": MGBCXRDataModule,}
 
 dm_cls = datasets[known_args.dataset]
 print(dm_cls)
@@ -99,7 +99,7 @@ checkpoint_callback = ModelCheckpoint(
     every_n_epochs=1,
 )
 
-trainer = pl.Trainer.from_argparse_args(args)
+trainer = pl.Trainer.from_argparse_args(args)#, gradient_clip_val=1.0)
 trainer.callbacks.append(checkpoint_callback)
 trainer.callbacks.append(lr_monitor)
 trainer.callbacks.append(IOMonitor())
@@ -110,7 +110,10 @@ if args.run_azure:
     trainer.logger = get_azure_logger()
 
 transformer = VisionTransformer.from_argparse_args(args)
-dm = dm_cls.from_argparse_args(args, output_dir=args.output_dir, transforms=transformer.train_transform)
+dm = dm_cls.from_argparse_args(args, 
+                               output_dir=args.output_dir, 
+                               transforms=transformer.val_transform)
+
 args.image_dims = transformer.dims
 params = vars(args)
 model = VAE.from_argparse_args(args, params=params)
@@ -128,11 +131,11 @@ if args.auto_lr_find:
         trainer.logger.experiment.log_figure(run.id, lr_finder.plot(suggest=True), "lr_find.png")
         trainer.logger.experiment.log_param(run.id, "real_base_lr", model.base_lr)
 
-if trainer.is_global_zero:
-    with open(os.path.join(args.output_dir, "input.yaml"), 'w') as f:
-        yaml.safe_dump(params, f)
-    with open(os.path.join(args.output_dir, "model.txt"), 'w') as f:
-        print(model, file=f)
+#if trainer.is_global_zero:
+#    with open(os.path.join(args.output_dir, "input.yaml"), 'w') as f:
+#        yaml.safe_dump(params, f)
+#    with open(os.path.join(args.output_dir, "model.txt"), 'w') as f:
+#        print(model, file=f)
 
 trainer.fit(model, dm)
 

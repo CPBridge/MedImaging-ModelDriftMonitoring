@@ -47,14 +47,42 @@ def macro_auc(scores, labels, skip_missing=True):
 def micro_auc(scores, labels):
     return float(auroc(torch.tensor(scores), torch.tensor(labels).long(), average='micro').numpy())
 
+def youden_point(df, target_names):
+    """
+    Calculate the Youden Index for each disease and return that as optimal operating point for the disease.
+    """
+    operating_points = {}
+    for disease in target_names:
+        fpr, tpr, thresholds = metrics.roc_curve(df[f'label.{disease}'], df[f'activation.{disease}'])
 
-def classification_report(scores, labels, target_names=None, th=0.5, ):
+        # Calculate Youden Index
+        idx = np.argmax(tpr - fpr)
+        best_cutoff = thresholds[idx]
+
+        operating_points[disease] = format(best_cutoff, ".4f")
+
+    return operating_points
+
+
+def classification_report(scores, labels, target_names=None, th=None):
     keeps = (labels.sum(axis=0) > 0)
 
     if target_names is None:
         target_names = [str(i) for i in range(scores.shape[1])]
     target_names = np.array(target_names)
-    output = metrics.classification_report(labels, scores >= th, target_names=target_names, output_dict=True)
+
+    if not isinstance(th, dict):
+            raise ValueError("Thresholds (th) must be provided as a dictionary with target names as keys.")
+
+    #binarize scores according to their thresholds
+    binary_scores = np.zeros_like(scores, dtype=bool)
+    for i, target in enumerate(target_names):
+        if target in th:
+            binary_scores[:, i] = scores[:, i] >= float(th[target])
+        else:
+            raise KeyError(f"No threshold provided for target '{target}'.")
+
+    output = metrics.classification_report(labels, binary_scores, target_names=target_names, output_dict=True)
     for i, k in enumerate(target_names):
         if keeps[i] == 0:
             continue
@@ -99,12 +127,31 @@ class AUROCCalculator(BaseDriftCalculator):
 class ClassificationReportCalculator(BaseDriftCalculator):
     name = "class_report"
 
-    def __init__(self, label_col=None, score_col=None, target_names=None, th=0.5):
+    def __init__(self, label_col=None, score_col=None, target_names=None, th=None):
         super().__init__()
         self.label_col = label_col
         self.score_col = score_col
         self.target_names = target_names
         self.th = th
+    
+    def prepare(self, ref):
+        self._ref = self.convert(ref)
+        if 'activation' in self._ref and 'label' in self._ref:
+
+            activations_df = pd.DataFrame(self._ref['activation'].tolist(), index=self._ref.index)
+            labels_df = pd.DataFrame(self._ref['label'].tolist(), index=self._ref.index)
+            combined_df = pd.concat([activations_df, labels_df], axis=1)
+
+            combined_df.columns = ['activation.' + str(k) for i, k in enumerate(self.target_names)] + \
+                                ['label.' + str(k) for i, k in enumerate(self.target_names)]
+            
+            self._ref_df = combined_df
+            self._is_prepared = True
+        else:
+            print("Error: 'ref' does not contain required 'activation' and 'label' columns.")
+
+        self.th = youden_point(self._ref_df, self.target_names)
+        self._is_prepared = True
 
     def convert(self, arg):
         if not isinstance(arg, pd.DataFrame):

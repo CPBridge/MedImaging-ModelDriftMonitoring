@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+#SBATCH -o /homes/5/fd881/slurm_log/vae_train_mgb-%j.out
+#SBATCH -J vae_train_mgb
+#SBATCH -p pubgpu,rtx8000
+#SBATCH -A qtim
+#SBATCH -n 1
+#SBATCH --cpus-per-task=16
+#SBATCH --gpus 1
+#SBATCH --mem 128G
+#SBATCH -t 36:00:00
+
+export PYENV_VERSION="med-image-drift"
+export PYTHONPATH="${HOME}/repos/MedImaging-ModelDriftMonitoring/src":${PYTHONPATH}
+
+python ${HOME}/repos/MedImaging-ModelDriftMonitoring/src/scripts/vae/train.py \
+    --frontal_only 1 \
+    --data_folder /autofs/cluster/qtim/datasets/private/xray_drift/dicom/ \
+    --output_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/vae_mgb \
+    --default_root_dir /autofs/cluster/qtim/projects/xray_drift/models/mgb/vae_mgb \
+    --num_workers 16 \
+    --cache_folder "/vast/qtim/projects/xray-drift/numpy_cache/" \
+    --dataset 'mgb' \
+    --max_epochs 200 \
+    #--pretrained '/autofs/cluster/qtim/projects/xray_drift/models/epoch=4-step=29844.ckpt'

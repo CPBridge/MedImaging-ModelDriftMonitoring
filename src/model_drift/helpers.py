@@ -323,9 +323,9 @@ def filter_label_by_score(df, q, label_cols, sample_start_date=None, sample_end_
         between 0 and 1.
 
     """
-    # print("Input Len", len(df))
+    print("Input Len", len(df))
     stuff = df.loc[sample_start_date:sample_end_date].reset_index()
-    # print("Sample Len", len(stuff))
+    print("Sample Len", len(stuff))
     index = set()
     for label_col in label_cols:
         if bad:

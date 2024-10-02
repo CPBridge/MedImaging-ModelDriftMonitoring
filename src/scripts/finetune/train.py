@@ -74,13 +74,16 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
         filename="{epoch:0>3}",
         save_last=True,
         save_top_k=-1,
+        monitor="val/AUROC.mean",
         every_n_epochs=1,
     )
 
-    trainer = pl.Trainer.from_argparse_args(args)
+    #gpus=1 was hardcoded because argument didnt work and it speeds up debugging
+    trainer = pl.Trainer.from_argparse_args(args, gpus=1)
     trainer.callbacks.append(checkpoint_callback)
     trainer.callbacks.append(lr_monitor)
     trainer.callbacks.append(IOMonitor())
+
     # trainer.callbacks.append(GPUStatsMonitor())
 
     if args.run_azure:
@@ -90,7 +93,9 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
 
     transformer = VisionTransformer.from_argparse_args(args)
     # dm = PadChestDataModule.from_argparse_args(args, transforms=transformer.train_transform)
-    dm = MGBCXRDataModule.from_argparse_args(args, transforms=transformer.train_transform)
+    dm = MGBCXRDataModule.from_argparse_args(args, train_transforms=transformer.train_transform, 
+                                             val_transforms=transformer.val_transform,
+                                             test_transforms=transformer.val_transform)
     args.num_classes = len(LABEL_GROUPINGS)
     params = vars(args)
     model = CheXFinetune.from_argparse_args(args, labels=dm.labels, params=params)
@@ -100,6 +105,8 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     #         yaml.safe_dump(params, f)
     #     with open(os.path.join(args.output_dir, "model.txt"), 'w') as f:
     #         print(model, file=f)
+
+
 
     trainer.fit(model, dm)
 
