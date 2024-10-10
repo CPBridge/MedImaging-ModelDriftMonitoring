@@ -57,11 +57,23 @@ def basic_performance_plots(
     df = pd.read_csv(drift_csv_path, header=[0, 1, 2, 3])
     logging.info(f"Loaded drift CSV from: {drift_csv_path}")
 
-    # load the raw file with all exams in reference window to get the start and end dates
-    ref_csv = pd.read_csv(str(drift_csv_path).replace('output.csv', 'ref.csv'))
-    logging.info(f"Loaded reference CSV from: {str(drift_csv_path).replace('output.csv', 'ref.csv')}")
-    ref_window_start_str = ref_csv["StudyDate"].min()
-    ref_window_end_str = ref_csv["StudyDate"].max()
+    # Try to load the raw file with all exams in reference window to get the start and end dates
+    ref_csv_path = str(drift_csv_path).replace('output.csv', 'ref.csv')
+    if os.path.exists(ref_csv_path):
+        try:
+            ref_csv = pd.read_csv(ref_csv_path)
+            logging.info(f"Loaded reference CSV from: {ref_csv_path}")
+            ref_window_start_str = ref_csv["StudyDate"].min()
+            ref_window_end_str = ref_csv["StudyDate"].max()
+
+        except Exception as e:
+            logging.error(f"Error reading reference CSV: {e}")
+            raise
+    else:
+        logging.warning(f"Reference CSV not found at {ref_csv_path}. Using standard dates for the reference window: 2019-10-01 to 2019-12-31.")
+        ref_window_start_str = '2019-10-01'
+        ref_window_end_str = '2019-12-31'
+
     ref_window_start = datetime.strptime(ref_window_start_str, "%Y-%m-%d")
     ref_window_end = datetime.strptime(ref_window_end_str, "%Y-%m-%d")
 
@@ -164,8 +176,8 @@ def basic_performance_plots(
     mmc_df_max['mmc'] = mmc_df_max.mean(axis=1, numeric_only=True)
 
 
-    analysis_utils.create_mmc_plot(mmc_df, date_col, output_dir, title='Unweighted MMC with Range', mmc_min=mmc_df_min, mmc_max=mmc_df_max)
-    analysis_utils.create_mmc_plot(mmc_df, date_col, output_dir, title='Unweighted MMC')
+    analysis_utils.create_mmc_plot(mmc_df, date_col, output_dir, title='Unweighted MMC+ with Range', mmc_min=mmc_df_min, mmc_max=mmc_df_max)
+    analysis_utils.create_mmc_plot(mmc_df, date_col, output_dir, title='Unweighted MMC+')
 
     #TODO: These plots currently use the unweighted MMC, but are not used in the paper
     analysis_utils.create_normalized_performance_plots_w_mmc(df, output_dir, ref_window_start, ref_window_end, mmc_df)
@@ -270,8 +282,8 @@ def basic_performance_plots(
     mmc_df_max_weighted['mmc'] = mmc_df_max_weighted.sum(axis=1)
 
     # Create plots for weighted MMC
-    analysis_utils.create_mmc_plot(mmc_df_weighted, date_col, output_dir, title='Weighted MMC with Range', mmc_min=mmc_df_min_weighted, mmc_max=mmc_df_max_weighted)
-    analysis_utils.create_mmc_plot(mmc_df_weighted, date_col, output_dir, title='Weighted MMC')
+    analysis_utils.create_mmc_plot(mmc_df_weighted, date_col, output_dir, title='Weighted MMC+ with Range', mmc_min=mmc_df_min_weighted, mmc_max=mmc_df_max_weighted)
+    analysis_utils.create_mmc_plot(mmc_df_weighted, date_col, output_dir, title='Weighted MMC+')
     analysis_utils.create_joint_scatter_density_plots(df, output_dir, ref_window_start, ref_window_end, mmc_df_weighted)
 
     # Create plots for VAE features alone, using the weighted values
