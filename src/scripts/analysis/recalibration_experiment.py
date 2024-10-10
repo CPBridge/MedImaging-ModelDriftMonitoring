@@ -5,8 +5,21 @@ import matplotlib.pyplot as plt
 from pycrumbs import tracked
 import click
 
-# Make sure that text will be editable in svg
+# Plotting parameters
 plt.rcParams['svg.fonttype'] = 'none'
+plt.rcParams.update({
+    'svg.fonttype': 'none',
+    'font.size': 12,
+    'axes.titlesize': 14,
+    'axes.labelsize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 10,
+    'figure.titlesize': 16,
+    'axes.grid': True,
+    'grid.alpha': 0.3,
+    'grid.color': '#cccccc'
+})
 
 @click.command()
 @click.argument('original-mmc-path', type=Path)
@@ -61,23 +74,23 @@ def main(
     fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')
 
     # Plot the MMC line before and after the recalibration event with different colors
-    ax.plot(before_recalibration.index, before_recalibration['mmc'], label='MMC', color='r')
-    ax.plot(after_recalibration.index, after_recalibration['mmc'], label='MMC after recalibration', color='purple')
+    ax.plot(before_recalibration.index, before_recalibration['mmc'], label='MMC+', color='r')
+    ax.plot(after_recalibration.index, after_recalibration['mmc'], label='MMC+ after recalibration', color='purple')
 
     ax.fill_between(df_mmc_combined.index, df_mmc_combined['mmc_min'], df_mmc_combined['mmc_max'], alpha=0.5, label='MMC Range', color='gray')
     ax.axvline(pd.to_datetime(recalibration_reference_end), color='lightgreen', label='Recalibration Event')  # Ensure color is set to green
     ax.axvspan(pd.to_datetime(recalibration_reference_start), pd.to_datetime(recalibration_reference_end), color='lightgreen', alpha=0.3, label='Recalibration Reference Period')
 
     ax.legend()
-    ax.set_title('MMC Recalibration')
+    ax.set_title('MMC+ Recalibration')
     ax.set_xlabel('Date')
-    ax.set_ylabel('MMC')
+    ax.set_ylabel('MMC+')
     ax.set_xlim(initial_reference_start.date(), df_mmc_combined.index.max().date())
     ax.tick_params(axis='x', rotation=45)
 
     # save the plot in the output directory
-    plt.savefig(output_dir / 'weighted_mmc_with_range_recalibration.png', dpi=600)
-    plt.savefig(output_dir / 'weighted_mmc_with_range_recalibration.svg', format='svg', bbox_inches='tight')
+    plt.savefig(output_dir / 'weighted_mmc+_with_range_recalibration.png', dpi=600)
+    plt.savefig(output_dir / 'weighted_mmc+_with_range_recalibration.svg', format='svg', bbox_inches='tight')
     plt.close()
 
 if __name__ == '__main__':
