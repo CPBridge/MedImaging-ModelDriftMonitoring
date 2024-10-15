@@ -2,11 +2,17 @@ from pathlib import Path
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from pycrumbs import tracked
 import click
 
 # Plotting parameters
+# Plotting parameters
 plt.rcParams['svg.fonttype'] = 'none'
+mpl.rcParams['svg.fonttype'] = 'none'
+mpl.rcParams['font.size'] = 12
+mpl.rcParams['xtick.labelsize'] = 10
+mpl.rcParams['ytick.labelsize'] = 10
 plt.rcParams.update({
     'svg.fonttype': 'none',
     'font.size': 12,
@@ -71,7 +77,7 @@ def main(
     before_recalibration = df_mmc_combined.loc[:recalibration_reference_end]
     after_recalibration = df_mmc_combined.loc[recalibration_reference_end:]
 
-    fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')
+    fig, ax = plt.subplots(figsize=(4.8, 2.4), facecolor='white')
 
     # Plot the MMC line before and after the recalibration event with different colors
     ax.plot(before_recalibration.index, before_recalibration['mmc'], label='MMC+', color='r')
@@ -81,16 +87,35 @@ def main(
     ax.axvline(pd.to_datetime(recalibration_reference_end), color='lightgreen', label='Recalibration Event')  # Ensure color is set to green
     ax.axvspan(pd.to_datetime(recalibration_reference_start), pd.to_datetime(recalibration_reference_end), color='lightgreen', alpha=0.3, label='Recalibration Reference Period')
 
-    ax.legend()
-    ax.set_title('MMC+ Recalibration')
-    ax.set_xlabel('Date')
-    ax.set_ylabel('MMC+')
+    # Add vertical line on Junary 1st, 2020 and March 10th
+    ax.axvline(x=pd.to_datetime('2020-01-01'), color='darkblue', linestyle='--', linewidth=1)
+    ax.axvline(x=pd.to_datetime('2020-03-10'), color='#5088A1', linestyle='--', linewidth=1)
+    ax.legend(fontsize=10)  
+    ax.set_title('MMC+ Recalibration', fontsize=8)
+    ax.set_xlabel('Date', fontsize=8)
+    ax.set_ylabel('MMC+', fontsize=8)
     ax.set_xlim(initial_reference_start.date(), df_mmc_combined.index.max().date())
+    ax.tick_params(axis='both', which='major', labelsize=6)
     ax.tick_params(axis='x', rotation=45)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    # Adjust layout to prevent cut-off labels
+    plt.tight_layout()
+
+    fig = plt.gcf()
+    fig_width, fig_height = fig.get_size_inches()
 
     # save the plot in the output directory
     plt.savefig(output_dir / 'weighted_mmc+_with_range_recalibration.png', dpi=600)
+    fig.set_size_inches(fig_width, fig_height)
+
     plt.savefig(output_dir / 'weighted_mmc+_with_range_recalibration.svg', format='svg', bbox_inches='tight')
+
+    fig.set_size_inches(10, 6)  # New size
+    
+    # Save the plot in the new size
+    plt.savefig(output_dir / 'weighted_mmc+_with_range_recalibration_large.png', dpi=600, bbox_inches='tight')
+    plt.savefig(output_dir / 'weighted_mmc+_with_range_recalibration_large.svg', format='svg', bbox_inches='tight')
     plt.close()
 
 if __name__ == '__main__':

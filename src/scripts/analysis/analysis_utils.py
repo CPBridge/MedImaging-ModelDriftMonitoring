@@ -99,7 +99,10 @@ def create_performance_plots(df: pd.DataFrame, output_dir: Path, ref_start: str,
         ax2.plot(date_series[~mask], auroc_series[~mask], label='AUROC', color='blue')
         ax2.plot(date_series[mask], auroc_series[mask], label='AUROC during reference period', color='cornflowerblue')
         ax2.axhline(y=avg_auroc_ref, color='gray', linestyle='--', label='Avg AUROC during Reference Window')
-        ax2.fill_between(date_series, std_3_upper, std_3_lower, color='gray', alpha=0.35, label='3 Std Range of Reference Window')        
+        ax2.fill_between(date_series, std_3_upper, std_3_lower, color='gray', alpha=0.35, label='3 Std Range of Reference Window')   
+        # Add vertical line on Junary 1st, 2020 and March 10th
+        ax2.axvline(x=pd.to_datetime('2020-01-01'), color='darkblue', linestyle='--', linewidth=1)
+        ax2.axvline(x=pd.to_datetime('2020-03-10'), color='#5088A1', linestyle='--', linewidth=1)     
         ax2.set_title(name)
         ax2.legend()
         #ax2.grid(False)
@@ -112,7 +115,7 @@ def create_performance_plots(df: pd.DataFrame, output_dir: Path, ref_start: str,
         plt.tight_layout()
         
 
-        fig2.savefig(os.path.join(output_dir, f'performance_{name}.png'))
+        fig2.savefig(os.path.join(output_dir, f'performance_{name}.png'), dpi=600)
         fig2.savefig(os.path.join(output_dir, f'performance_{name}.svg'), format='svg', bbox_inches='tight')
         # Save performance data as CSV
         performance_data = pd.DataFrame({
@@ -278,7 +281,7 @@ def create_joint_scatter_density_plots(df: pd.DataFrame, output_dir: Path, ref_s
         combined_data.columns = ['mmc', f'normalized_auroc_{name}']
 
         combined_data.index = pd.to_datetime(combined_data.index)
-        combined_data['date_category'] = combined_data.index >= pd.Timestamp('2020-03-16')
+        combined_data['date_category'] = combined_data.index >= pd.Timestamp('2020-03-10')
 
         g = sns.jointplot(
             data=combined_data,
@@ -306,7 +309,7 @@ def create_joint_scatter_density_plots(df: pd.DataFrame, output_dir: Path, ref_s
             g.ax_joint.set_ylim([-16, 16])
 
         handles, labels = g.ax_joint.get_legend_handles_labels()
-        labels = ['Before March 16, 2020', 'After March 16, 2020']
+        labels = ['Before March 10, 2020', 'After March 10, 2020']
 
         if i == 0:
             g.ax_joint.legend(labels, title='Date', loc='lower right')
@@ -421,6 +424,10 @@ def create_mmc_plot(df, date_col, output_dir, title, col_plot='MMC', mmc_min=Non
 
         ax.fill_between(df['date'], mmc_min['mmc'], mmc_max['mmc'], 
                         alpha=0.5, label='MMC+ Range', color='gray')
+                    
+    # Add vertical line on Junary 1st, 2020 and March 10th
+    ax.axvline(x=pd.to_datetime('2020-01-01'), color='darkblue', linestyle='--', linewidth=1)
+    ax.axvline(x=pd.to_datetime('2020-03-10'), color='#5088A1', linestyle='--', linewidth=1)
 
     ax.set_title(title, fontsize=8)  
     ax.set_xlabel('Date', fontsize=8) 

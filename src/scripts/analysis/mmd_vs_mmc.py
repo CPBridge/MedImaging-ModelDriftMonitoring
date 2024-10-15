@@ -84,6 +84,8 @@ def main(mmd_input_path, mmc_input_path, output_dir, start_date, end_date):
     color = 'gray'
     ax2.set_ylabel('MMC', color=color)
     ax2.plot(plot_data_mmc['date'], plot_data_mmc['mmc'], color=color, label='MMC+')
+    # Add vertical line on February 1st, 2020
+    ax2.axvline(x=pd.to_datetime('2020-02-01'), color='darkblue', linestyle='--', linewidth=1, label='First window containing only test data')
     ax2.tick_params(axis='y', labelcolor=color)
     ax1.tick_params(axis='x', rotation=45)
 
