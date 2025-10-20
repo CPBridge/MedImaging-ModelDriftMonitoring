@@ -13,22 +13,6 @@ from model_drift.data import mgb_data
 TRAIN_DATE_END = datetime(year=2019, month=10, day=1)
 VAL_DATE_END = datetime(year=2020, month=1, day=1)
 
-meta_df = pd.read_csv(
-    mgb_locations.dicom_inventory_csv,
-    index_col=0,
-)
-meta_df.drop(columns=["StudyDate"], inplace=True)  # anonymized dates
-labels_df = pd.read_csv(
-    mgb_locations.labels_csv,
-    index_col=0,
-)  # need real dates from this file
-meta_df = meta_df.merge(
-    labels_df,
-    how="left",
-    on=("StudyInstanceUID", "PatientID", "AccessionNumber"),
-)
-
-
 def split_on_date(df, splits, col=None):
     splits = pd.to_datetime(splits).sort_values()
 
@@ -61,6 +45,21 @@ def jsonl_files2dataframe(jsonl_files, converter=None, refresh_rate=None, **kwar
             for line in lines:
                 df.append(converter(json.loads(line)))
     return pd.json_normalize(df)
+
+meta_df = pd.read_csv(
+    mgb_locations.dicom_inventory_csv,
+    index_col=0,
+)
+meta_df.drop(columns=["StudyDate"], inplace=True)  # anonymized dates
+labels_df = pd.read_csv(
+    mgb_locations.labels_csv,
+    index_col=0,
+)  # need real dates from this file
+meta_df = meta_df.merge(
+    labels_df,
+    how="left",
+    on=("StudyInstanceUID", "PatientID", "AccessionNumber"),
+)
 
 label_cols = list(mgb_data.LABEL_GROUPINGS.keys()) 
 input_dir = Path('/autofs/cluster/qtim/projects/xray_drift/inferences/classification_final_allpoc_inference_woconsolidation')
@@ -136,6 +135,24 @@ train_df, val_df, test_df = split_on_date(
     col="StudyDate",
 )
 
-breakpoint()
+output_path = Path('/autofs/cluster/qtim/projects/xray_drift/drift_analyses/PLOTS/paper/drift_analysis_allpoc_emd_jackknife_helllinger_final_florence_PLOTS/label_prevalence.csv')
 
+# Generate label counts for each dataframe
+label_counts_data = []
 
+for df_name, df in [("train", train_df), ("val", val_df), ("test", test_df)]:
+    for col in label_cols:
+        counts = df[col].value_counts()
+        for value, count in counts.items():
+            label_counts_data.append({
+                'dataset': df_name,
+                'label': col,
+                'value': value,
+                'count': count
+            })
+
+# Create DataFrame and save to CSV
+label_counts_df = pd.DataFrame(label_counts_data)
+label_counts_df.to_csv(output_path, index=False)
+
+print(f"Label counts saved to: {output_path}")
