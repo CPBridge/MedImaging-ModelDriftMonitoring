@@ -20,7 +20,6 @@ month_locator = mdates.MonthLocator(interval=3)
 plt.rcParams['svg.fonttype'] = 'none'
 
 
-
 @click.command()
 @click.argument('drift-csv-path', type=Path)
 @click.argument('output-dir', type=Path)
@@ -28,7 +27,7 @@ plt.rcParams['svg.fonttype'] = 'none'
 @click.option(
     '--equal-weights', 
     type=bool, 
-    default=True, 
+    default=True,   
     help=(
         'If true, the VAE, score, and metadata metrics are weighted equally. '
         'The correlation weights are only used to weight within the different '

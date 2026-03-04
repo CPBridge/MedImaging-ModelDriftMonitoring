@@ -23,7 +23,7 @@ from model_drift.helpers import create_score_based_ood_frame
 from pycrumbs import tracked
 import warnings
 import pandas as pd
-
+import numpy as np
 import argparse
 
 
@@ -127,10 +127,23 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     merged_df = scores_df.merge(vae_df, on="index", how="left")
     merged_df = merged_df.merge(meta_df, on="index", how="left")
 
+    if args.combine_vae_classifier:
+        # normalize the values in full_mu by making each row 0 mean and unit variance
+        merged_df['full_mu_norm'] = merged_df['full_mu'].apply(lambda x: (np.array(x) - np.mean(x)) / np.std(x))
+
+        # do the same to the activation
+        merged_df['activation_norm'] = merged_df['activation'].apply(lambda x: (np.array(x) - np.mean(x)) / np.std(x))
+
+        # combine the two
+        merged_df['mu_activation_combined'] = merged_df.apply(lambda x: np.concatenate([x['full_mu_norm'], x['activation_norm']]), axis=1)
+
     # option to only evaluate drift on single location
     if args.point_of_care:
         merged_df = merged_df[merged_df["Point of Care"] == args.point_of_care].copy()
 
+    # Split the PixelSpacing to only use the row value, as Chest x-rays have the same value for both rows and columns
+    merged_df['PixelSpacing_row'] = merged_df['PixelSpacing'].apply(lambda x: float(x.strip('[]').split(',')[0]) if pd.notnull(x) else np.nan)
+    
     # only use frontal images
     print("Only using frontal images")
     print(f"Number of samples before filtering: {len(merged_df)}")
@@ -193,7 +206,7 @@ def main(output_dir: Path, args: argparse.Namespace) -> None:
     
     target_df = pd.concat(targets.values(), sort=True)
     # end of hard data injection code
-    dwc = mgb_default_config(ref_df, args.point_of_care, vae_cols=r"^full_mu$", score_cols= r"^activation$")
+    dwc = mgb_default_config(ref_df, args.point_of_care, vae_cols=r"^full_mu$", score_cols= r"^activation$") #full_mu mu_activation_combined
 
     dwc.add_drift_stat(
         'performance',
@@ -288,6 +301,8 @@ if __name__ == '__main__':
 
     parser.add_argument("--ref_window_start", type=str, default=None)
     parser.add_argument("--ref_window_end", type=str, default=None)
+
+    parser.add_argument("--combine_vae_classifier", type=int, default=0)
 
     args = parser.parse_args()
 

@@ -202,10 +202,17 @@ def rolling_window_dt_apply(dataframe, func, drilldown_func=None, window='30D', 
 
     def _apply(i):
         wstart, wend = str(i - bdelta), str(i + fdelta)
-        det_window = dataframe.loc[wstart:wend]
-        if len(det_window) < min_periods:
+        # New python version needs sorting here
+        dataframe.sort_index(inplace=True)
+        if wstart not in dataframe.index:
+            wstart = wend
+        try: 
+            det_window = dataframe.loc[wstart:wend]
+            if len(det_window) < min_periods:
+                return None
+        except Exception as e:
+            print(f"Error: {e}")
             return None
-
         preds = func(det_window)
         data = {
             "info": {"date_range": [str(wstart), str(wend)], "date": str(i), "nsamples": len(det_window)},

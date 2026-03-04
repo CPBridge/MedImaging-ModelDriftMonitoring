@@ -15,7 +15,8 @@ from model_drift.drift import (
     EMDDriftCalculatorJackKnife_1D, 
     ChiSqDriftCalculatorJackKnife, 
     HellingerDriftCalculatorJackKnife,
-    EMDDriftCalculatorJackKnife_woRef
+    EMDDriftCalculatorJackKnife_woRef,
+    MMDCalculator
 )
 from model_drift.drift import HistIntersectionCalculator, KdeHistPlotCalculator
 
@@ -141,13 +142,14 @@ def mgb_default_config(dataframe, point_of_care, vae_cols=r"mu\..*", score_cols=
     metadata_float_cols = [
         # "WindowCenter",
         # "WindowWidth",
-        "RelativeXRayExposure",
+        # "RelativeXRayExposure",
         "Rows",
         "Columns",
         "XRayTubeCurrent",
-        "Exposure",
+        #"Exposure", 
         "ExposureInuAs",
         "KVP",
+        'PixelSpacing_row', # This column is the first value of the Pixel Spacing Attribute (Row Spacing)
     ]
 
     metadata_cat_cols = [
@@ -156,18 +158,20 @@ def mgb_default_config(dataframe, point_of_care, vae_cols=r"mu\..*", score_cols=
         "PhotometricInterpretation",
         "BitsStored",
         "Modality",
-        "PixelRepresentation",
-        "PixelAspectRatio",
+        # "PixelRepresentation",
+        # "PixelAspectRatio",
         # "SpatialResolution",
         "Point of Care",
         "Patient Sex",
+        "Patient Status",
         "Is Stat",
         "Exam Code",
+        'ManufacturerModelName',
     ]
 
     # if we are limiting to one point of care, some columns produce errors
-    if point_of_care:
-        #removed from metadata_cat_cols, as there are only nans for the ER
+    if point_of_care and 'RelativeXRayExposure' in metadata_float_cols:
+        # removed from metadata_cat_cols, as there are only nans for the ER
         metadata_float_cols.remove("RelativeXRayExposure")
 
     metadata_age_cols = ["Patient Age"]
@@ -176,12 +180,14 @@ def mgb_default_config(dataframe, point_of_care, vae_cols=r"mu\..*", score_cols=
         #dwc.add_drift_stat(col, KSDriftCalculator(), drilldown=False, group="appearance")
         #dwc.add_drift_stat(col, KSDriftCalculatorJackKnife(), drilldown=False, group="appearance")
         dwc.add_drift_stat(col, EMDDriftCalculatorJackKnife_woRef(), drilldown=False, group="appearance")
+        #dwc.add_drift_stat(col, MMDCalculator(), drilldown=False, group="appearance")
         #dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500), drilldown=True, group="appearance")
 
     def add_score_metrics(dwc: TabularDriftCalculator, col: str):
         #dwc.add_drift_stat(col, KSDriftCalculator(), drilldown=False, group="ai")
         #dwc.add_drift_stat(col, KSDriftCalculatorJackKnife(), drilldown=False, group="ai")
         dwc.add_drift_stat(col, EMDDriftCalculatorJackKnife_woRef(), drilldown=False, group="ai")
+        #dwc.add_drift_stat(col, MMDCalculator(), drilldown=False, group="ai")
         #dwc.add_drift_stat(col, KdeHistPlotCalculator(npoints=500), drilldown=True, group="ai")
 
     def add_metadata_metrics(dwc: TabularDriftCalculator, col: str):

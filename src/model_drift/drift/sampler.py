@@ -9,7 +9,7 @@ from sklearn.utils import resample
 class Sampler(object):
     def __init__(self, sample_size, replacement=True, random_state=None):
         self.sample_size = sample_size
-        self.replacement = replacement
+        self.replacement = bool(replacement)
         self.random_state = random_state
 
     def sample_index(self, index, stratify=None):
