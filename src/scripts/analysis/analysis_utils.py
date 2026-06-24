@@ -360,7 +360,7 @@ def create_joint_scatter_density_plots(df: pd.DataFrame, output_dir: Path, ref_s
 
 def create_mmc_plot(df, date_col, output_dir, title, col_plot='MMC', mmc_min=None, 
                     mmc_max=None, plot_start_date=pd.to_datetime('2019-11-01'), 
-                    plot_end_date=pd.to_datetime('2021-07-01')):
+                    plot_end_date=pd.to_datetime('2021-07-01'), significance_level=None):
         
     col_plot_display = 'MMC+' if col_plot.lower() == 'mmc' else col_plot
 
@@ -369,7 +369,8 @@ def create_mmc_plot(df, date_col, output_dir, title, col_plot='MMC', mmc_min=Non
     date_df = pd.DataFrame({'date': date_range})
 
     df['date'] = df[date_col]
-    df = df.merge(date_df, on='date', how='right')
+    df = df[df.date.isin(date_df.date.tolist())].copy()
+    # df = df.merge(date_df, on='date', how='right')
     df.sort_values(by='date', inplace=True)
 
     # Check if there are NaN values in the 'mmc' columns and count them
@@ -428,6 +429,8 @@ def create_mmc_plot(df, date_col, output_dir, title, col_plot='MMC', mmc_min=Non
     # Add vertical line on Junary 1st, 2020 and March 10th
     ax.axvline(x=pd.to_datetime('2020-01-01'), color='darkblue', linestyle='--', linewidth=1)
     ax.axvline(x=pd.to_datetime('2020-03-10'), color='#5088A1', linestyle='--', linewidth=1)
+    if significance_level is not None:
+        ax.axhline(y=significance_level, color='k', linestyle='--', linewidth=1)
 
     ax.set_title(title, fontsize=8)  
     ax.set_xlabel('Date', fontsize=8) 
